@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ルート天候表示アプリ</title>
+    <!-- LeafletのCSSを読み込む -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>GPXルート天候マップ</h1>
+    <div class="controls">
+        <!-- 動作モード切り替え -->
+        <div class="control-group">
+            <label for="inputAppMode">動作モード:</label>
+            <select id="inputAppMode">
+                <option value="plan">ルート計画（日時指定）</option>
+                <option value="nav">現在地ナビ（現在地から予想）</option>
+            </select>
+        </div>
+
+        <div class="control-group" id="groupStartTime">
+            <label for="inputStartTime">スタート日時:</label>
+            <input type="datetime-local" id="inputStartTime">
+        </div>
+        
+        <div class="control-group">
+            <label for="inputFlatSpeed">平地平均速度 (km/h):</label>
+            <input type="number" id="inputFlatSpeed" value="15" min="1">
+        </div>
+        <div class="control-group">
+            <label for="inputClimbSpeed">上り平均速度 (km/h):</label>
+            <input type="number" id="inputClimbSpeed" value="10" min="1">
+        </div>
+        <div class="control-group">
+            <label for="inputDescendSpeed">下り平均速度 (km/h):</label>
+            <input type="number" id="inputDescendSpeed" value="20" min="1">
+        </div>
+        
+        <!-- 天気取得方法の切り替え -->
+        <div class="control-group">
+            <label for="inputFetchMethod">天気取得方法:</label>
+            <select id="inputFetchMethod">
+                <option value="pointCount">ポイント数で分割</option>
+                <option value="timeInterval">時間間隔で分割</option>
+            </select>
+        </div>
+        
+        <!-- ポイント数設定（デフォルト表示） -->
+        <div class="control-group" id="groupPointCount">
+            <label for="inputPointCount">天気取得ポイント数:</label>
+            <input type="number" id="inputPointCount" value="10" min="2" max="50">
+        </div>
+        
+        <!-- 時間間隔設定（切り替えで表示） -->
+        <div class="control-group" id="groupTimeInterval" style="display: none;">
+            <label for="inputTimeInterval">時間間隔 (分):</label>
+            <input type="number" id="inputTimeInterval" value="60" min="10" max="360">
+        </div>
+
+        <div class="control-group">
+            <label for="inputGradientSpan">勾配スパン (地点数):</label>
+            <input type="number" id="inputGradientSpan" value="10" min="1" max="100">
+        </div>
+
+        <!-- マーカーの表示モード切り替え -->
+        <div class="control-group">
+            <label for="inputMarkerDisplayMode">マーカー表示:</label>
+            <select id="inputMarkerDisplayMode">
+                <option value="full">全て表示 (時間・天気・風)</option>
+                <option value="weatherWind">天気・風向・風速</option>
+                <option value="windOnly">風向・風速</option>
+                <option value="arrowOnly">風向の矢印のみ</option>
+                <option value="none">なし</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label for="gpxFileInput">GPXファイルを選択:</label>
+            <input type="file" id="gpxFileInput" accept=".gpx">
+        </div>
+    </div>
+    
+    <!-- 地図とリストを並べるメインコンテナ -->
+    <div class="main-content">
+        <!-- 地図を表示するためのコンテナ -->
+        <div id="map">
+            <!-- 勾配色の凡例 -->
+            <div class="route-legend">
+                <div><span style="background: #e74c3c;"></span>急な上り (5%以上)</div>
+                <div><span style="background: #f39c12;"></span>上り (2%〜5%)</div>
+                <div><span style="background: #2ecc71;"></span>平坦 (-2%〜2%)</div>
+                <div><span style="background: #00bcd4;"></span>下り (-5%〜-2%)</div>
+                <div><span style="background: #3498db;"></span>急な下り (-5%以下)</div>
+            </div>
+        </div>
+        
+        <!-- 天気データリストを表示するためのコンテナ -->
+        <div id="weatherListContainer">
+            <div class="weather-table-wrapper">
+                <table class="weather-table">
+                    <tbody>
+                        <tr id="row-point"><th>地点</th></tr>
+                        <tr id="row-date"><th>日付</th></tr>
+                        <tr id="row-time"><th>時</th></tr>
+                        <tr id="row-weather"><th>天気</th></tr>
+                        <tr id="row-precip"><th>降水</th></tr>
+                        <tr id="row-temp"><th>気温</th></tr>
+                        <tr id="row-wind"><th>風</th></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- LeafletのJavaScriptを読み込む -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
