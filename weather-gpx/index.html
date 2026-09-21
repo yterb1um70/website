@@ -9,7 +9,23 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>GPXルート天候マップ</h1>
+    <header class="app-header">
+        <h1>GPXルート天候マップ</h1>
+        <div class="theme-toggle">
+            <span class="theme-icon">☀️</span>
+            <label class="toggle-switch">
+                <input type="checkbox" id="themeToggleCb">
+                <span class="toggle-slider"></span>
+            </label>
+            <span class="theme-icon">🌙</span>
+        </div>
+    </header>
+    
+    <!-- 免責事項の注意書き -->
+    <div class="disclaimer-note">
+        ※当アプリが提供する到着時刻や天気はシミュレーションによる目安であり、正確性を保証するものではありません。実際の登山や走行時は、必ずご自身で最新の気象情報を確認し、自己責任で安全を確保してください。
+    </div>
+
     <div class="controls">
         <!-- 動作モード切り替え -->
         <div class="control-group">
@@ -88,11 +104,12 @@
         <div id="map">
             <!-- 勾配色の凡例 -->
             <div class="route-legend">
-                <div><span style="background: #e74c3c;"></span>急な上り (5%以上)</div>
-                <div><span style="background: #f39c12;"></span>上り (2%〜5%)</div>
-                <div><span style="background: #2ecc71;"></span>平坦 (-2%〜2%)</div>
-                <div><span style="background: #00bcd4;"></span>下り (-5%〜-2%)</div>
-                <div><span style="background: #3498db;"></span>急な下り (-5%以下)</div>
+                <div><span class="legend-steep-climb"></span>急な上り (5%以上)</div>
+                <div><span class="legend-climb"></span>上り (2%〜5%)</div>
+                <div><span class="legend-flat"></span>平坦 (-2%〜2%)</div>
+                <div><span class="legend-descend"></span>下り (-5%〜-2%)</div>
+                <div><span class="legend-steep-descend"></span>急な下り (-5%以下)</div>
+                <div><span class="legend-heading-arrow">→</span>進行方向</div>
             </div>
         </div>
         
@@ -102,17 +119,28 @@
                 <table class="weather-table">
                     <tbody>
                         <tr id="row-point"><th>地点</th></tr>
+                        <tr id="row-distance"><th>距離<br><span style="font-size: 0.7rem; font-weight: normal; opacity: 0.8;">(平均勾配)</span></th></tr>
                         <tr id="row-date"><th>日付</th></tr>
                         <tr id="row-time"><th>時</th></tr>
                         <tr id="row-weather"><th>天気</th></tr>
                         <tr id="row-precip"><th>降水</th></tr>
                         <tr id="row-temp"><th>気温</th></tr>
                         <tr id="row-wind"><th>風</th></tr>
+                        <tr id="row-heading"><th>進行方向</th></tr>
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
+
+    <!-- フッターエリア -->
+    <footer>
+        <p>&copy; 2026 GPXルート天候マップ</p>
+        <p>
+            <a href="terms.html" target="_blank" rel="noopener noreferrer">利用規約・免責事項</a> | 
+            <a href="privacy.html" target="_blank" rel="noopener noreferrer">プライバシーポリシー</a>
+        </p>
+    </footer>
 
     <!-- LeafletのJavaScriptを読み込む -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>

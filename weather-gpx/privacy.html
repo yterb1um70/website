@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>プライバシーポリシー - GPXルート天候マップ</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- ユーザーのテーマ設定（ダークモード）の反映とトグルスイッチ処理スクリプト -->
+    <script>
+        const constSettingsStorageKey = 'gpxWeatherAppSettings';
+        
+        function ApplyThemeMode(isDark) {
+            if (isDark) {
+                document.body.classList.add('dark-mode');
+            } else {
+                document.body.classList.remove('dark-mode');
+            }
+        }
+
+        let initialIsDark = false;
+        const savedData = localStorage.getItem(constSettingsStorageKey);
+        if (savedData !== null) {
+            const settings = JSON.parse(savedData);
+            initialIsDark = settings.themeMode === 'dark';
+            ApplyThemeMode(initialIsDark);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const toggleCb = document.getElementById('themeToggleCb');
+            if (toggleCb) {
+                toggleCb.checked = initialIsDark;
+                toggleCb.addEventListener('change', (e) => {
+                    const isDark = e.target.checked;
+                    ApplyThemeMode(isDark);
+                    
+                    let currentSettings = {};
+                    const currentData = localStorage.getItem(constSettingsStorageKey);
+                    if (currentData !== null) {
+                        currentSettings = JSON.parse(currentData);
+                    }
+                    currentSettings.themeMode = isDark ? 'dark' : 'light';
+                    localStorage.setItem(constSettingsStorageKey, JSON.stringify(currentSettings));
+                });
+            }
+        });
+    </script>
+
+    <header class="app-header">
+        <h1>GPXルート天候マップ</h1>
+        <div class="theme-toggle">
+            <span class="theme-icon">☀️</span>
+            <label class="toggle-switch">
+                <input type="checkbox" id="themeToggleCb">
+                <span class="toggle-slider"></span>
+            </label>
+            <span class="theme-icon">🌙</span>
+        </div>
+    </header>
+
+    <div class="document-container">
+        <h1>プライバシーポリシー</h1>
+        <p>GPXルート天候マップ（以下「当サイト」）では、ユーザーの皆様のプライバシー保護を最重要視しています。当サイトにおける個人情報・位置情報等の取り扱いについて、以下の通りプライバシーポリシーを定めます。</p>
+
+        <h2>1. GPXデータの取り扱いについて</h2>
+        <p>ユーザーが読み込ませたGPXファイル（ルートデータ、過去の移動履歴、標高データ等）は、<strong>すべてユーザーのブラウザ（ローカル環境）内でのみ処理</strong>されます。当サイトの運営者が管理するサーバー等へこれらのファイルやルート情報が送信・保存されることは一切ありません。</p>
+
+        <h2>2. 現在地の位置情報（GPS情報）について</h2>
+        <p>「現在地ナビモード」を利用する際、当サイトはブラウザの機能を用いてユーザーの現在地を取得します。この位置情報についても同様に、当サイトのサーバーには送信・保存されません。ただし、ルート上の最寄り地点の天候を取得するため、後述の外部API（Open-Meteo）に緯度・経度の座標データとして送信されます。</p>
+
+        <h2>3. 外部APIへのデータ送信について</h2>
+        <p>当サイトは、ルート上の天候情報を取得するために、外部サービスである <strong>Open-Meteo API</strong> を利用しています。天候データを取得する際、ルート上の指定された地点（または現在地）の「緯度・経度」のみが Open-Meteo 社のサーバーに送信されます。<br>
+        Open-Meteo社によるデータの取り扱いについては、同社のプライバシーポリシーに準拠します。<br>
+        参照: <a href="https://open-meteo.com/en/terms" target="_blank" rel="noopener noreferrer">Open-Meteo Terms and Privacy Policy</a></p>
+
+        <h2>4. ローカルストレージの使用について</h2>
+        <p>当サイトでは、ユーザーが入力した各種設定（テーマ、動作モード、マーカーの表示設定など）を保存し、次回訪問時に復元するために、ブラウザの「ローカルストレージ（localStorage）」を使用しています。これらの情報はユーザーの端末内にのみ保存され、外部に送信されることはありません。ブラウザの設定からキャッシュやデータをクリアすることで、いつでも削除可能です。</p>
+
+        <h2>5. アクセス解析について</h2>
+        <p>当サイトでは、サービスの向上や利用状況の把握のためにアクセス解析ツールを使用する場合があります。これにより収集されるデータは匿名化されており、個人を特定するものではありません。</p>
+
+        <h2>6. 本ポリシーの変更</h2>
+        <p>当サイトは、法令の変更やサービスの仕様変更に伴い、事前の予告なく本プライバシーポリシーを改定することがあります。改定後のプライバシーポリシーは、当サイトに掲載された時点で効力を生じるものとします。</p>
+        
+        <p style="text-align: right; margin-top: 30px;">制定日: 2026年9月21日</p>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 GPXルート天候マップ</p>
+        <p>
+            <a href="index.html">アプリに戻る</a> | 
+            <a href="terms.html">利用規約・免責事項</a>
+        </p>
+    </footer>
+</body>
+</html>

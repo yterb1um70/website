@@ -39,6 +39,13 @@ class APP_MANAGER {
         if (hasSavedData) {
             const settings = JSON.parse(savedData);
             
+            if (settings.themeMode !== undefined) {
+                const themeToggleExists = document.getElementById('themeToggleCb') !== null;
+                if (themeToggleExists) {
+                    document.getElementById('themeToggleCb').checked = settings.themeMode === 'dark';
+                }
+            }
+            
             if (settings.appMode !== undefined) {
                 document.getElementById('inputAppMode').value = settings.appMode;
             }
@@ -78,8 +85,23 @@ class APP_MANAGER {
             this.SetCurrentTime();
         }
         
+        this.ApplyTheme();
         this.ToggleAppModeUI();
         this.ToggleFetchMethodUI();
+    }
+
+    // テーマ設定を画面に適用するメソッド
+    ApplyTheme() {
+        const themeElement = document.getElementById('themeToggleCb');
+        const themeElementExists = themeElement !== null;
+        if (themeElementExists) {
+            const isDark = themeElement.checked;
+            if (isDark) {
+                document.body.classList.add('dark-mode');
+            } else {
+                document.body.classList.remove('dark-mode');
+            }
+        }
     }
 
     // 動作モードの選択に応じてスタート日時の表示を切り替えるメソッド
@@ -122,7 +144,9 @@ class APP_MANAGER {
 
     // 現在の入力フォームの値をローカルストレージに保存するメソッド
     SaveSettings() {
+        const isDark = document.getElementById('themeToggleCb') !== null ? document.getElementById('themeToggleCb').checked : false;
         const settings = {
+            themeMode: isDark ? 'dark' : 'light',
             appMode: document.getElementById('inputAppMode').value,
             startTime: document.getElementById('inputStartTime').value,
             flatSpeed: document.getElementById('inputFlatSpeed').value,
@@ -140,7 +164,7 @@ class APP_MANAGER {
     // 入力フォームの値が変更された際に自動保存し、表示を更新するイベントを設定するメソッド
     AttachEventListeners() {
         const inputIds = [
-            'inputAppMode', 'inputStartTime', 'inputFlatSpeed', 'inputClimbSpeed', 
+            'themeToggleCb', 'inputAppMode', 'inputStartTime', 'inputFlatSpeed', 'inputClimbSpeed', 
             'inputDescendSpeed', 'inputFetchMethod', 'inputPointCount', 
             'inputTimeInterval', 'inputGradientSpan', 'inputMarkerDisplayMode'
         ];
@@ -150,10 +174,17 @@ class APP_MANAGER {
             const elementExists = element !== null;
             if (elementExists) {
                 const isMarkerModeInput = inputIds[i] === 'inputMarkerDisplayMode';
+                const isThemeModeInput = inputIds[i] === 'themeToggleCb';
+                
                 element.addEventListener('change', () => {
                     this.SaveSettings();
+                    
+                    if (isThemeModeInput) {
+                        this.ApplyTheme();
+                    }
+                    
                     if (this.hasRouteData) {
-                        if (isMarkerModeInput) {
+                        if (isMarkerModeInput || isThemeModeInput) {
                             this.RedrawMarkersOnly();
                         } else {
                             this.UpdateDisplay();
@@ -194,7 +225,7 @@ class APP_MANAGER {
 
         this.weatherDataCache = [];
 
-        const rowIds = ['row-point', 'row-date', 'row-time', 'row-weather', 'row-precip', 'row-temp', 'row-wind'];
+        const rowIds = ['row-point', 'row-distance', 'row-date', 'row-time', 'row-weather', 'row-precip', 'row-temp', 'row-wind', 'row-heading'];
         for (let i = 0; i < rowIds.length; i++) {
             const row = document.getElementById(rowIds[i]);
             const rowExists = row !== null;
@@ -246,7 +277,7 @@ class APP_MANAGER {
             for (let i = 0; i < this.weatherDataCache.length; i++) {
                 const data = this.weatherDataCache[i];
                 const marker = L.marker([data.lat, data.lng], { 
-                    icon: CreateCustomIcon(data.pointLabelStr, data.timeString, data.weatherEmoji, data.windDirection, data.windSpeed, markerDisplayMode) 
+                    icon: CreateCustomIcon(data.pointLabelStr, data.timeString, data.weatherEmoji, data.windDirection, data.windSpeed, markerDisplayMode, data.heading, data.headingStr) 
                 }).addTo(this.mapInstance).bindPopup(data.popupContent);
                  
                 this.weatherMarkers.push(marker);
@@ -385,6 +416,24 @@ function CalculateDistance(lat1, lon1, lat2, lon2) {
     return constEarthRadiusKm * c;
 }
 
+// 2点間の方位角（進行方向）を計算する関数
+function CalculateBearing(lat1, lon1, lat2, lon2) {
+    const lat1Rad = lat1 * Math.PI / 180;
+    const lat2Rad = lat2 * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const y = Math.sin(dLon) * Math.cos(lat2Rad);
+    const x = Math.cos(lat1Rad) * Math.sin(lat2Rad) - Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLon);
+    let brng = Math.atan2(y, x);
+    return (brng * 180 / Math.PI + 360) % 360;
+}
+
+// 方位角（度）から16方位の文字列を取得する関数
+function GetHeadingString(bearing) {
+    const directions = ["北", "北北東", "北東", "東北東", "東", "東南東", "南東", "南南東", "南", "南南西", "南西", "西南西", "西", "西北西", "北西", "北北西"];
+    const index = Math.round(bearing / 22.5) % 16;
+    return directions[index];
+}
+
 // 指定した緯度経度に最も近いルート上のインデックスを取得する関数
 function FindNearestPointIndex(targetLat, targetLng, points) {
     let minDistance = Infinity;
@@ -421,6 +470,23 @@ function CalculateSmoothedGradient(points, startIndex, spanCount) {
     return 0;
 }
 
+// 勾配に応じてクラス名を返す関数（色をCSSで制御するため）
+function GetGradientClass(gradient) {
+    const isSteepClimb = gradient >= 5;
+    if (isSteepClimb) return 'route-steep-climb';
+    
+    const isClimb = gradient >= 2;
+    if (isClimb) return 'route-climb';
+    
+    const isSteepDescend = gradient <= -5;
+    if (isSteepDescend) return 'route-steep-descend';
+    
+    const isDescend = gradient <= -2;
+    if (isDescend) return 'route-descend';
+    
+    return 'route-flat';
+}
+
 // GPXデータを解析して緯度経度および標高の配列を取得する関数
 function ParseGpx(gpxString) {
     const parser = new DOMParser();
@@ -455,22 +521,25 @@ function ParseGpx(gpxString) {
             ele = parseFloat(eleNodes[0].textContent);
         }
 
-        points.push({ lat: lat, lng: lon, ele: ele, estimatedTime: null });
+        points.push({ lat: lat, lng: lon, ele: ele, estimatedTime: null, totalDistance: 0 });
     }
     
     return points;
 }
 
-// 勾配と速度に基づいて各ポイントへの到着予想時刻を計算する関数
+// 勾配と速度に基づいて各ポイントへの到着予想時刻および累積距離を計算する関数
 function CalculateEstimatedTimes(points, startTime, flatSpeed, climbSpeed, descendSpeed, gradientSpan, startIndex = 0) {
     let currentTimeMs = startTime.getTime();
+    let currentTotalDistance = 0;
     
     for (let i = 0; i < startIndex; i++) {
         points[i].estimatedTime = null;
+        points[i].totalDistance = 0;
     }
 
     for (let i = startIndex; i < points.length; i++) {
         points[i].estimatedTime = new Date(currentTimeMs);
+        points[i].totalDistance = currentTotalDistance;
         
         const isNotLastPoint = i < points.length - 1;
         if (isNotLastPoint) {
@@ -481,6 +550,8 @@ function CalculateEstimatedTimes(points, startTime, flatSpeed, climbSpeed, desce
             const hasDistance = distance > 0;
             
             if (hasDistance) {
+                currentTotalDistance += distance;
+                
                 let currentSpeed = flatSpeed;
                 const gradient = CalculateSmoothedGradient(points, i, gradientSpan);
                 
@@ -500,54 +571,37 @@ function CalculateEstimatedTimes(points, startTime, flatSpeed, climbSpeed, desce
     }
 }
 
-// 勾配に応じたルートの描画色を取得する関数
-function GetGradientColor(gradient) {
-    const isSteepClimb = gradient >= 5;
-    if (isSteepClimb) return '#e74c3c';
-    
-    const isClimb = gradient >= 2;
-    if (isClimb) return '#f39c12';
-    
-    const isSteepDescend = gradient <= -5;
-    if (isSteepDescend) return '#3498db';
-    
-    const isDescend = gradient <= -2;
-    if (isDescend) return '#00bcd4';
-    
-    return '#2ecc71';
-}
-
 // 勾配に応じて色を塗り分けながらルート線を地図上に描画する関数
 function DrawRoute(mapObj, points, gradientSpan) {
     const pathGroup = L.featureGroup().addTo(mapObj);
     let currentLine = [];
-    let currentColor = null;
+    let currentClass = null;
 
     for (let i = 0; i < points.length - 1; i++) {
         const p1 = points[i];
         const p2 = points[i + 1];
         
         const gradient = CalculateSmoothedGradient(points, i, gradientSpan);
-        const segmentColor = GetGradientColor(gradient);
+        const segmentClass = GetGradientClass(gradient);
         
-        const isInitial = currentColor === null;
-        const isSameColor = currentColor === segmentColor;
+        const isInitial = currentClass === null;
+        const isSameClass = currentClass === segmentClass;
 
         if (isInitial) {
-            currentColor = segmentColor;
+            currentClass = segmentClass;
             currentLine = [[p1.lat, p1.lng], [p2.lat, p2.lng]];
-        } else if (isSameColor) {
+        } else if (isSameClass) {
             currentLine.push([p2.lat, p2.lng]);
         } else {
-            L.polyline(currentLine, { color: currentColor, weight: 5 }).addTo(pathGroup);
-            currentColor = segmentColor;
+            L.polyline(currentLine, { className: currentClass, weight: 5 }).addTo(pathGroup);
+            currentClass = segmentClass;
             currentLine = [[p1.lat, p1.lng], [p2.lat, p2.lng]];
         }
     }
     
     const hasRemainingLine = currentLine.length > 0;
     if (hasRemainingLine) {
-        L.polyline(currentLine, { color: currentColor, weight: 5 }).addTo(pathGroup);
+        L.polyline(currentLine, { className: currentClass, weight: 5 }).addTo(pathGroup);
     }
 
     mapObj.fitBounds(pathGroup.getBounds(), {
@@ -613,10 +667,10 @@ function GetWeatherDescription(weatherCode) {
 }
 
 // 表示モードに応じて情報パネル（マーカー）のHTMLとサイズを生成する関数
-function CreateCustomIcon(pointLabel, timeString, weatherEmoji, windDirection, windSpeed, displayMode) {
+function CreateCustomIcon(pointLabel, timeString, weatherEmoji, windDirection, windSpeed, displayMode, heading, headingStr) {
     let htmlContent = '';
-    let size = [115, 48];
-    let anchor = [57, 24];
+    let size = [135, 48];
+    let anchor = [67, 24];
     
     if (displayMode === 'weatherWind') {
         htmlContent = `
@@ -627,12 +681,13 @@ function CreateCustomIcon(pointLabel, timeString, weatherEmoji, windDirection, w
                         <span style="font-size: 16px;" title="天気">${weatherEmoji}</span>
                         <span class="wind-arrow" style="transform: rotate(${windDirection}deg);" title="風向">↓</span>
                         <span>${windSpeed} m/s</span>
+                        <span style="display:inline-block; transform: rotate(${heading}deg); color: var(--heading-arrow-color); font-weight:bold; margin-left: 4px;" title="進路: ${headingStr}">↑</span>
                     </div>
                 </div>
             </div>
         `;
-        size = [115, 36];
-        anchor = [57, 18];
+        size = [135, 36];
+        anchor = [67, 18];
     } else if (displayMode === 'windOnly') {
         htmlContent = `
             <div class="transparent-marker-container">
@@ -641,19 +696,25 @@ function CreateCustomIcon(pointLabel, timeString, weatherEmoji, windDirection, w
                     <span class="transparent-arrow-icon" style="transform: rotate(${windDirection}deg);" title="風向">↓</span>
                     <span class="overlap-wind-speed" title="風速">${windSpeed}</span>
                 </div>
+                <div style="font-size: 14px; color: var(--heading-arrow-color); font-weight: 900; text-shadow: 1px 1px 0 var(--text-shadow-color), -1px -1px 0 var(--text-shadow-color), 1px -1px 0 var(--text-shadow-color), -1px 1px 0 var(--text-shadow-color); margin-top: 2px;">
+                    <span style="display:inline-block; transform: rotate(${heading}deg);" title="進路: ${headingStr}">↑</span>
+                </div>
             </div>
         `;
-        size = [40, 50];
-        anchor = [20, 25];
+        size = [55, 60];
+        anchor = [27, 30];
     } else if (displayMode === 'arrowOnly') {
         htmlContent = `
             <div class="transparent-marker-container">
                 <div class="transparent-marker-number">${pointLabel}</div>
                 <span class="transparent-arrow-icon" style="transform: rotate(${windDirection}deg);" title="風向">↓</span>
+                <div style="font-size: 14px; color: var(--heading-arrow-color); font-weight: 900; text-shadow: 1px 1px 0 var(--text-shadow-color), -1px -1px 0 var(--text-shadow-color), 1px -1px 0 var(--text-shadow-color), -1px 1px 0 var(--text-shadow-color); margin-top: 2px;">
+                    <span style="display:inline-block; transform: rotate(${heading}deg);" title="進路: ${headingStr}">↑</span>
+                </div>
             </div>
         `;
-        size = [40, 50];
-        anchor = [20, 25];
+        size = [55, 60];
+        anchor = [27, 30];
     } else {
         htmlContent = `
             <div class="custom-info-box">
@@ -664,12 +725,13 @@ function CreateCustomIcon(pointLabel, timeString, weatherEmoji, windDirection, w
                         <span style="font-size: 16px;" title="天気">${weatherEmoji}</span>
                         <span class="wind-arrow" style="transform: rotate(${windDirection}deg);" title="風向">↓</span>
                         <span>${windSpeed} m/s</span>
+                        <span style="display:inline-block; transform: rotate(${heading}deg); color: var(--heading-arrow-color); font-weight:bold; margin-left: 4px;" title="進路: ${headingStr}">↑</span>
                     </div>
                 </div>
             </div>
         `;
-        size = [115, 48];
-        anchor = [57, 24];
+        size = [135, 48];
+        anchor = [67, 24];
     }
 
     return L.divIcon({
@@ -723,14 +785,16 @@ async function FetchRouteWeather(mapObj, points, markerArray, weatherCacheArray,
     }
 
     const rowPoint = document.getElementById('row-point');
+    const rowDistance = document.getElementById('row-distance');
     const rowDate = document.getElementById('row-date');
     const rowTime = document.getElementById('row-time');
     const rowWeather = document.getElementById('row-weather');
     const rowPrecip = document.getElementById('row-precip');
     const rowTemp = document.getElementById('row-temp');
     const rowWind = document.getElementById('row-wind');
+    const rowHeading = document.getElementById('row-heading');
 
-    const hasTableRows = rowPoint && rowDate && rowTime && rowWeather && rowPrecip && rowTemp && rowWind;
+    const hasTableRows = rowPoint && rowDistance && rowDate && rowTime && rowWeather && rowPrecip && rowTemp && rowWind && rowHeading;
 
     let lastDateStr = "";
     let lastDateCell = null;
@@ -760,6 +824,10 @@ async function FetchRouteWeather(mapObj, points, markerArray, weatherCacheArray,
                 const weatherDesc = GetWeatherDescription(weatherCode);
                 const weatherDescStr = `${weatherDesc.text} ${weatherDesc.emoji}`;
                 
+                const hours = currentPoint.estimatedTime.getHours().toString().padStart(2, '0');
+                const minutes = currentPoint.estimatedTime.getMinutes().toString().padStart(2, '0');
+                const formattedTimeStr = `${hours}:${minutes}`;
+                
                 const timeString = currentPoint.estimatedTime.toLocaleString('ja-JP', { 
                     month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' 
                 });
@@ -768,6 +836,18 @@ async function FetchRouteWeather(mapObj, points, markerArray, weatherCacheArray,
                 if (isLastTarget) {
                     pointLabelStr = "終";
                 }
+
+                // 進行方向（方位角）を計算
+                const origIndex = points.indexOf(currentPoint);
+                let heading = 0;
+                if (origIndex < points.length - 1) {
+                    const nextPoint = points[origIndex + 1];
+                    heading = CalculateBearing(currentPoint.lat, currentPoint.lng, nextPoint.lat, nextPoint.lng);
+                } else if (origIndex > 0) {
+                    const prevPoint = points[origIndex - 1];
+                    heading = CalculateBearing(prevPoint.lat, prevPoint.lng, currentPoint.lat, currentPoint.lng);
+                }
+                const headingStr = GetHeadingString(heading);
                 
                 const popupContent = `
                     <div style="font-size:14px;">
@@ -776,7 +856,8 @@ async function FetchRouteWeather(mapObj, points, markerArray, weatherCacheArray,
                         天気: ${weatherDescStr}<br>
                         降水: ${precipitation} mm<br>
                         気温: ${temperature} °C<br>
-                        風: ${windSpeed} m/s
+                        風: ${windSpeed} m/s<br>
+                        進路: ${headingStr}
                     </div>
                 `;
                 
@@ -788,6 +869,8 @@ async function FetchRouteWeather(mapObj, points, markerArray, weatherCacheArray,
                     weatherEmoji: weatherDesc.emoji,
                     windDirection: windDirection,
                     windSpeed: windSpeed,
+                    heading: heading,
+                    headingStr: headingStr,
                     popupContent: popupContent
                 };
                 weatherCacheArray.push(weatherDataObj);
@@ -795,18 +878,35 @@ async function FetchRouteWeather(mapObj, points, markerArray, weatherCacheArray,
                 const isNoneMode = displayMode === 'none';
                 if (!isNoneMode) {
                     const marker = L.marker([currentPoint.lat, currentPoint.lng], { 
-                        icon: CreateCustomIcon(pointLabelStr, timeString, weatherDesc.emoji, windDirection, windSpeed, displayMode) 
+                        icon: CreateCustomIcon(pointLabelStr, timeString, weatherDesc.emoji, windDirection, windSpeed, displayMode, heading, headingStr) 
                     }).addTo(mapObj).bindPopup(popupContent);
                      
                     markerArray.push(marker);
                 }
 
                 if (hasTableRows) {
+                    // 直前のターゲットポイントからの距離と平均勾配を計算
+                    let distFromPrev = 0;
+                    let gradientFromPrev = 0;
+                    if (i > 0) {
+                        const prevTarget = targetPoints[i - 1];
+                        distFromPrev = currentPoint.totalDistance - prevTarget.totalDistance;
+                        
+                        const eleDiff = currentPoint.ele - prevTarget.ele;
+                        const hasDist = distFromPrev > 0;
+                        if (hasDist) {
+                            gradientFromPrev = (eleDiff / (distFromPrev * 1000)) * 100;
+                        }
+                    }
+                    
+                    const distStr = distFromPrev.toFixed(1);
+                    const isPositiveGradient = gradientFromPrev > 0;
+                    const gradStr = isPositiveGradient ? `+${gradientFromPrev.toFixed(1)}` : gradientFromPrev.toFixed(1);
+
                     const dateObj = currentPoint.estimatedTime;
                     const day = dateObj.getDate();
                     const dayOfWeek = ['日','月','火','水','木','金','土'][dateObj.getDay()];
                     const dateStr = `${day}日(${dayOfWeek})`;
-                    const hourStr = dateObj.getHours().toString();
 
                     const tdPoint = document.createElement('td');
                     tdPoint.textContent = pointLabelStr;
@@ -818,6 +918,10 @@ async function FetchRouteWeather(mapObj, points, markerArray, weatherCacheArray,
                         });
                     });
                     rowPoint.appendChild(tdPoint);
+
+                    const tdDistance = document.createElement('td');
+                    tdDistance.innerHTML = `<strong>${distStr}</strong><span class="unit-text">km</span><br><span style="font-size: 0.75rem; opacity: 0.8;" title="前の地点からの平均勾配">(${gradStr}%)</span>`;
+                    rowDistance.appendChild(tdDistance);
 
                     const isSameDate = lastDateStr === dateStr;
                     if (isSameDate) {
@@ -834,7 +938,7 @@ async function FetchRouteWeather(mapObj, points, markerArray, weatherCacheArray,
                     }
 
                     const tdTime = document.createElement('td');
-                    tdTime.textContent = hourStr;
+                    tdTime.textContent = formattedTimeStr;
                     rowTime.appendChild(tdTime);
 
                     const tdWeather = document.createElement('td');
@@ -851,10 +955,17 @@ async function FetchRouteWeather(mapObj, points, markerArray, weatherCacheArray,
 
                     const tdWind = document.createElement('td');
                     tdWind.innerHTML = `
-                        <div style="display:inline-block; transform: rotate(${windDirection}deg); color: #3498db; margin-bottom: 2px;">↓</div><br>
+                        <div style="display:inline-block; transform: rotate(${windDirection}deg); color: var(--wind-arrow-color); margin-bottom: 2px;">↓</div><br>
                         <strong>${windSpeed}</strong><span class="unit-text">m/s</span>
                     `;
                     rowWind.appendChild(tdWind);
+
+                    const tdHeading = document.createElement('td');
+                    tdHeading.innerHTML = `
+                        <div style="display:inline-block; transform: rotate(${Math.round(heading)}deg); color: var(--heading-arrow-color); margin-bottom: 2px; font-size: 16px; font-weight: 900;">↑</div><br>
+                        <span style="font-size: 12px; font-weight: bold;">${headingStr}</span>
+                    `;
+                    rowHeading.appendChild(tdHeading);
                 }
             }
         } catch (error) {
