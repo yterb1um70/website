@@ -1,0 +1,759 @@
+/* CSS変数（カスタムプロパティ）の定義 */
+:root {
+    --bg-color: #f5f5f5;
+    --text-color: #333333;
+    --panel-bg: #ffffff;
+    --panel-border: #cccccc;
+    --panel-shadow: rgba(0, 0, 0, 0.1);
+    --table-header-bg: #f2f6f9;
+    --table-border: #e0e0e0;
+    --table-row-date-bg: #f9f9f9;
+    --table-row-weather-bg: #e8f4f8;
+    --legend-bg: rgba(255, 255, 255, 0.9);
+    --info-box-bg: rgba(255, 255, 255, 0.95);
+    --info-box-border: #3388ff;
+    --clickable-text: #3388ff;
+    --clickable-hover: #e6f2ff;
+    --disclaimer-bg: #fff3cd;
+    --disclaimer-text: #856404;
+    --disclaimer-border: #ffeeba;
+    --text-shadow-color: #ffffff;
+    --footer-border: #dddddd;
+    --footer-text: #666666;
+    --highlight-bg: rgba(0, 0, 0, 0.04);
+    --modal-overlay-bg: rgba(0, 0, 0, 0.5);
+
+    /* 地図と区別しやすいルート用の高コントラストカラー (7段階) */
+    --route-extreme-climb: #c0392b; /* 濃い赤 */
+    --route-steep-climb: #e74c3c;   /* 赤 */
+    --route-climb: #f39c12;         /* オレンジ */
+    --route-flat: #00bcd4;          /* 水色 */
+    --route-descend: #9b59b6;       /* 紫 */
+    --route-steep-descend: #8e44ad; /* 濃い紫 */
+    --route-extreme-descend: #2c3e50; /* 濃い青みがかったグレー */
+    
+    --wind-arrow-color: #0984e3;
+    --heading-arrow-color: #d63031;
+}
+
+/* ダークモード時の変数上書き */
+.dark-mode {
+    --bg-color: #121212;
+    --text-color: #e0e0e0;
+    --panel-bg: #1e1e1e;
+    --panel-border: #444444;
+    --panel-shadow: rgba(0, 0, 0, 0.5);
+    --table-header-bg: #2a2a2a;
+    --table-border: #444444;
+    --table-row-date-bg: #222222;
+    --table-row-weather-bg: #2a3338;
+    --legend-bg: rgba(30, 30, 30, 0.9);
+    --info-box-bg: rgba(30, 30, 30, 0.95);
+    --info-box-border: #55aaff;
+    --clickable-text: #66b2ff;
+    --clickable-hover: #334455;
+    --disclaimer-bg: #332b00;
+    --disclaimer-text: #ffd700;
+    --disclaimer-border: #806600;
+    --text-shadow-color: #111111;
+    --footer-border: #444444;
+    --footer-text: #aaaaaa;
+    --highlight-bg: rgba(255, 255, 255, 0.05);
+    --modal-overlay-bg: rgba(0, 0, 0, 0.7);
+
+    /* ダークマップ上で映えるネオンカラー系のパレット (7段階) */
+    --route-extreme-climb: #ff3333;
+    --route-steep-climb: #ff5252;
+    --route-climb: #ffb142;
+    --route-flat: #34ace0;
+    --route-descend: #ff77ff;
+    --route-steep-descend: #d980fa;
+    --route-extreme-descend: #833471;
+    
+    --wind-arrow-color: #48dbfb;
+    --heading-arrow-color: #ff6b81;
+}
+
+body {
+    font-family: sans-serif;
+    margin: 20px;
+    padding: 0;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    transition: background-color 0.3s, color 0.3s;
+}
+
+/* ヘッダー・トグルスイッチのスタイル */
+.app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.app-header h1 {
+    margin: 0;
+    color: var(--text-color);
+    font-size: 1.5rem;
+}
+
+.theme-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.theme-icon {
+    font-size: 1.2rem;
+}
+
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 26px;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 26px;
+}
+
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked + .toggle-slider {
+    background-color: var(--info-box-border);
+}
+
+input:checked + .toggle-slider:before {
+    transform: translateX(24px);
+}
+
+/* 免責事項の注意書きスタイル */
+.disclaimer-note {
+    background-color: var(--disclaimer-bg);
+    color: var(--disclaimer-text);
+    padding: 12px 15px;
+    border-left: 5px solid var(--disclaimer-border);
+    border-radius: 4px;
+    margin-bottom: 20px;
+    font-size: 0.9rem;
+    font-weight: bold;
+    line-height: 1.4;
+}
+
+/* =======================================================
+   2カラムレイアウト設定
+   ======================================================= */
+.app-layout {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+}
+
+/* 左側：サイドバー（設定エリア） */
+.sidebar {
+    flex: 0 0 330px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+/* 各設定グループ（カード） */
+.settings-group {
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 2px 4px var(--panel-shadow);
+}
+
+.settings-group h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 1.05rem;
+    color: var(--text-color);
+    border-bottom: 2px solid var(--info-box-border);
+    padding-bottom: 5px;
+}
+
+/* ラジオボタングループのスタイル */
+.radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 5px;
+}
+
+.radio-group label {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.95rem;
+}
+
+/* コントロール項目のスタイル */
+.control-group {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 12px;
+}
+
+.control-group:last-child {
+    margin-bottom: 0;
+}
+
+.control-group label {
+    font-size: 0.9rem;
+    margin-bottom: 5px;
+    color: var(--text-color);
+    opacity: 0.9;
+}
+
+.control-group input[type="number"], 
+.control-group input[type="datetime-local"], 
+.control-group select, 
+.control-group input[type="file"] {
+    padding: 6px;
+    border: 1px solid var(--panel-border);
+    border-radius: 4px;
+    font-size: 0.95rem;
+    background-color: var(--panel-bg);
+    color: var(--text-color);
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* 速度設定フォームのボタングループ */
+.speed-input-group {
+    flex-direction: column;
+    gap: 0;
+    width: 100%;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px dashed var(--panel-border);
+}
+
+.log-file-container {
+    background: var(--highlight-bg);
+    padding: 12px;
+    border-radius: 6px;
+    border: 1px dashed var(--panel-border);
+    margin-bottom: 15px;
+}
+
+.helper-text {
+    color: var(--footer-text);
+    margin-top: 5px;
+    display: block;
+    font-size: 0.8rem;
+}
+
+/* 右側：メインコンテンツ（地図とリスト） */
+.main-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    min-width: 0; /* Flexbox内のあふれ防止 */
+}
+
+/* 地図の高さを指定 */
+#map {
+    position: relative;
+    height: 600px;
+    width: 100%;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px var(--panel-shadow);
+    background-color: #e5e3df; /* Leafletのデフォルト背景に近い色 */
+    z-index: 1;
+}
+
+/* 地図内右上のマーカー表示設定コントロール */
+.marker-display-control {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: var(--legend-bg);
+    padding: 8px 12px;
+    border-radius: 5px;
+    box-shadow: 0 1px 3px var(--panel-shadow);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: var(--text-color);
+    border: 1px solid var(--panel-border);
+}
+
+.marker-display-control select {
+    padding: 4px 6px;
+    border: 1px solid var(--panel-border);
+    border-radius: 3px;
+    background-color: var(--panel-bg);
+    color: var(--text-color);
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+/* ダークモード時の地図タイルの色反転処理 */
+.dark-mode .leaflet-layer,
+.dark-mode .leaflet-control-zoom-in,
+.dark-mode .leaflet-control-zoom-out,
+.dark-mode .leaflet-control-attribution {
+    filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+}
+
+/* 勾配色 ルートパス用クラス (Leafletのインラインを上書き) */
+path.route-extreme-climb { stroke: var(--route-extreme-climb) !important; }
+path.route-steep-climb { stroke: var(--route-steep-climb) !important; }
+path.route-climb { stroke: var(--route-climb) !important; }
+path.route-flat { stroke: var(--route-flat) !important; }
+path.route-descend { stroke: var(--route-descend) !important; }
+path.route-steep-descend { stroke: var(--route-steep-descend) !important; }
+path.route-extreme-descend { stroke: var(--route-extreme-descend) !important; }
+
+/* 勾配色の凡例用カラースタイル */
+.legend-extreme-climb { background-color: var(--route-extreme-climb); }
+.legend-steep-climb { background-color: var(--route-steep-climb); }
+.legend-climb { background-color: var(--route-climb); }
+.legend-flat { background-color: var(--route-flat); }
+.legend-descend { background-color: var(--route-descend); }
+.legend-steep-descend { background-color: var(--route-steep-descend); }
+.legend-extreme-descend { background-color: var(--route-extreme-descend); }
+
+/* 進行方向矢印の凡例スタイル */
+.route-legend span.legend-heading-arrow {
+    color: var(--heading-arrow-color);
+    font-weight: bold;
+    font-size: 1.1rem;
+    background: transparent !important;
+    width: 20px;
+    height: auto;
+    text-align: center;
+    margin-right: 8px;
+    display: inline-block;
+}
+
+/* 勾配色の凡例スタイル */
+.route-legend {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    background: var(--legend-bg);
+    padding: 10px;
+    border-radius: 5px;
+    box-shadow: 0 1px 3px var(--panel-shadow);
+    z-index: 1000;
+    font-size: 0.85rem;
+    color: var(--text-color);
+}
+
+.route-legend div {
+    display: flex;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.route-legend div:last-child {
+    margin-bottom: 0;
+}
+
+.route-legend span {
+    display: inline-block;
+    width: 20px;
+    height: 4px;
+    margin-right: 8px;
+    border-radius: 2px;
+}
+
+/* 天気リストコンテナのスタイル */
+#weatherListContainer {
+    width: 100%;
+    background: var(--panel-bg);
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px var(--panel-shadow);
+    box-sizing: border-box;
+}
+
+/* タイムライン表のラッパー（横スクロール対応） */
+.weather-table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    border: 1px solid var(--panel-border);
+    border-radius: 4px;
+    background-color: var(--panel-bg);
+}
+
+/* タイムライン表のスタイル */
+.weather-table {
+    border-collapse: collapse;
+    width: max-content;
+    text-align: center;
+    font-size: 0.95rem;
+}
+
+.weather-table th, .weather-table td {
+    border: 1px solid var(--table-border);
+    padding: 10px 15px;
+    white-space: nowrap;
+    color: var(--text-color);
+}
+
+.weather-table th {
+    position: sticky;
+    left: 0;
+    background-color: var(--table-header-bg);
+    z-index: 2;
+    font-weight: normal;
+    border-right: 2px solid var(--panel-border);
+}
+
+.weather-table #row-date td {
+    text-align: left;
+    background-color: var(--table-row-date-bg);
+    font-weight: bold;
+}
+
+.weather-table #row-weather td {
+    background-color: var(--table-row-weather-bg);
+}
+
+/* 降水確率テキストのスタイル */
+.precip-probability-text {
+    font-size: 0.75rem;
+    font-weight: bold;
+    color: var(--text-color);
+    opacity: 0.85;
+    margin-top: 2px;
+}
+
+.unit-text {
+    font-size: 0.75rem;
+    opacity: 0.7;
+    margin-left: 2px;
+}
+
+/* クリック可能な地点セルのスタイル */
+.clickable-point {
+    cursor: pointer;
+    color: var(--clickable-text);
+    text-decoration: underline;
+    transition: background-color 0.2s;
+    font-weight: bold;
+}
+
+.clickable-point:hover {
+    background-color: var(--clickable-hover) !important;
+}
+
+/* マップ上のカスタム情報ボックスのスタイル */
+.custom-pin-wrapper {
+    background: transparent;
+    border: none;
+}
+
+.custom-info-box {
+    background: var(--info-box-bg);
+    border: 1.5px solid var(--info-box-border);
+    border-radius: 8px;
+    padding: 4px 8px;
+    font-size: 11px;
+    font-weight: bold;
+    color: var(--text-color);
+    white-space: nowrap;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    line-height: 1.2;
+}
+
+.custom-info-number {
+    font-size: 15px;
+    font-weight: 900;
+}
+
+.custom-info-details {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+}
+
+.custom-info-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+}
+
+.wind-arrow {
+    color: var(--wind-arrow-color);
+    font-size: 16px;
+    display: inline-block;
+    line-height: 1;
+}
+
+/* 透過背景マーカー（風向・風速、矢印のみ）のスタイル */
+.transparent-marker-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    filter: drop-shadow(0px 1px 2px rgba(0,0,0,0.4));
+}
+
+.transparent-marker-number {
+    font-size: 14px;
+    font-weight: 900;
+    color: var(--text-color);
+    margin-bottom: -2px;
+    text-shadow: 1px 1px 0 var(--text-shadow-color), -1px -1px 0 var(--text-shadow-color), 1px -1px 0 var(--text-shadow-color), -1px 1px 0 var(--text-shadow-color);
+    z-index: 2;
+}
+
+.transparent-arrow-icon {
+    color: var(--wind-arrow-color);
+    font-size: 32px;
+    font-weight: 900;
+    display: inline-block;
+    line-height: 1;
+    text-shadow: 1px 1px 0 var(--text-shadow-color), -1px -1px 0 var(--text-shadow-color), 1px -1px 0 var(--text-shadow-color), -1px 1px 0 var(--text-shadow-color);
+}
+
+.arrow-overlap-wrapper {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 矢印に重ねて表示する風速テキスト */
+.overlap-wind-speed {
+    position: absolute;
+    font-size: 13px;
+    font-weight: 900;
+    color: #e74c3c;
+    z-index: 3;
+    text-shadow: 1px 1px 0 var(--text-shadow-color), -1px -1px 0 var(--text-shadow-color), 1px -1px 0 var(--text-shadow-color), -1px 1px 0 var(--text-shadow-color);
+}
+
+/* 矢印のみ表示モード専用のスタイル */
+.custom-info-box-arrow-only {
+    background: var(--info-box-bg);
+    border: 1.5px solid var(--info-box-border);
+    border-radius: 6px;
+    padding: 4px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.arrow-only-number {
+    font-size: 11px;
+    font-weight: bold;
+    color: var(--text-color);
+    margin-bottom: 2px;
+}
+
+.arrow-only-icon {
+    color: var(--wind-arrow-color);
+    font-size: 22px;
+    font-weight: 900;
+    display: inline-block;
+    line-height: 1;
+}
+
+/* =======================================================
+   フッター・モーダル用スタイル
+   ======================================================= */
+footer {
+    margin-top: 40px;
+    padding: 20px 0;
+    text-align: center;
+    border-top: 1px solid var(--footer-border);
+    font-size: 0.85rem;
+    color: var(--footer-text);
+}
+
+footer a {
+    color: var(--clickable-text);
+    text-decoration: none;
+    margin: 0 10px;
+}
+
+footer a:hover {
+    text-decoration: underline;
+}
+
+/* モーダルオーバーレイ */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--modal-overlay-bg);
+    z-index: 2000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* モーダルコンテンツ領域 */
+.modal-content {
+    background-color: var(--panel-bg);
+    color: var(--text-color);
+    width: 90%;
+    max-width: 800px;
+    max-height: 85vh;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+/* 閉じるボタン */
+.modal-close {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 1.8rem;
+    font-weight: bold;
+    cursor: pointer;
+    color: var(--text-color);
+    z-index: 2001;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.modal-close:hover {
+    opacity: 1;
+}
+
+/* 文書コンテナ（モーダル内のテキスト表示用） */
+.document-container {
+    padding: 30px;
+    overflow-y: auto;
+    line-height: 1.6;
+}
+
+.document-container h1 {
+    font-size: 1.5rem;
+    border-bottom: 2px solid var(--info-box-border);
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+    margin-top: 0;
+    padding-right: 20px;
+}
+
+.document-container h2 {
+    font-size: 1.2rem;
+    margin-top: 25px;
+    border-left: 4px solid var(--info-box-border);
+    padding-left: 10px;
+    margin-bottom: 15px;
+}
+
+.document-container p, .document-container li {
+    font-size: 0.95rem;
+    margin-bottom: 10px;
+}
+
+.document-container ul {
+    margin-left: 20px;
+    margin-bottom: 15px;
+}
+
+/* =======================================================
+   スマートフォン向けレスポンシブ対応
+   ======================================================= */
+@media screen and (max-width: 900px) {
+    body {
+        margin: 10px;
+    }
+    
+    .app-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    /* スマホ画面では2カラムを解除し縦積みにする */
+    .app-layout {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .sidebar {
+        flex: none;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .main-area {
+        flex: none;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    #map {
+        width: 100%;
+        min-width: 0;
+        height: 450px;
+        flex: none;
+        margin-bottom: 0;
+    }
+
+    #weatherListContainer {
+        width: 100%;
+        min-width: 0;
+        height: auto;
+        flex: none;
+    }
+
+    .route-legend {
+        font-size: 0.75rem;
+        bottom: 10px;
+        left: 10px;
+        padding: 8px;
+    }
+    
+    .weather-table th, .weather-table td {
+        padding: 6px 10px;
+        font-size: 0.85rem;
+    }
+
+    .document-container {
+        padding: 20px;
+    }
+}
