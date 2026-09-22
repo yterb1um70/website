@@ -7,6 +7,20 @@ const constEarthRadiusKm = 6371;
 // 設定をローカルストレージに保存するためのキー定数
 const constSettingsStorageKey = 'gpxWeatherAppSettings';
 
+// ラジオボタンの値を設定するヘルパー関数
+function SetRadioValue(name, value) {
+    const el = document.querySelector(`input[name="${name}"][value="${value}"]`);
+    if (el) {
+        el.checked = true;
+    }
+}
+
+// ラジオボタンの値を取得するヘルパー関数
+function GetRadioValue(name) {
+    const el = document.querySelector(`input[name="${name}"]:checked`);
+    return el ? el.value : '';
+}
+
 // アプリケーション全体を管理するクラス
 class APP_MANAGER {
     constructor() {
@@ -27,8 +41,24 @@ class APP_MANAGER {
             attribution: '&copy; OpenStreetMap contributors'
         }).addTo(this.mapInstance);
 
+        // 地図上の設定コントロールおよび凡例のイベント伝播を無効化
+        const markerControl = document.getElementById('markerDisplayControl');
+        const hasMarkerControl = markerControl !== null;
+        if (hasMarkerControl) {
+            L.DomEvent.disableClickPropagation(markerControl);
+            L.DomEvent.disableScrollPropagation(markerControl);
+        }
+
+        const legendControl = document.querySelector('.route-legend');
+        const hasLegendControl = legendControl !== null;
+        if (hasLegendControl) {
+            L.DomEvent.disableClickPropagation(legendControl);
+            L.DomEvent.disableScrollPropagation(legendControl);
+        }
+
         this.LoadSettings();
         this.AttachEventListeners();
+        this.AttachModalListeners();
     }
 
     // ローカルストレージから設定を読み込むメソッド
@@ -47,7 +77,11 @@ class APP_MANAGER {
             }
             
             if (settings.appMode !== undefined) {
-                document.getElementById('inputAppMode').value = settings.appMode;
+                SetRadioValue('appMode', settings.appMode);
+            }
+
+            if (settings.speedMode !== undefined) {
+                SetRadioValue('speedMode', settings.speedMode);
             }
 
             const hasStartTime = settings.startTime !== undefined && settings.startTime !== "";
@@ -57,15 +91,20 @@ class APP_MANAGER {
                 this.SetCurrentTime();
             }
 
-            if (settings.flatSpeed !== undefined) {
-                document.getElementById('inputFlatSpeed').value = settings.flatSpeed;
-            }
-            if (settings.climbSpeed !== undefined) {
-                document.getElementById('inputClimbSpeed').value = settings.climbSpeed;
-            }
-            if (settings.descendSpeed !== undefined) {
-                document.getElementById('inputDescendSpeed').value = settings.descendSpeed;
-            }
+            // 手動設定（3段階）の読み込み
+            if (settings.climbSpeedManual !== undefined) document.getElementById('inputClimbSpeedManual').value = settings.climbSpeedManual;
+            if (settings.flatSpeedManual !== undefined) document.getElementById('inputFlatSpeedManual').value = settings.flatSpeedManual;
+            if (settings.descendSpeedManual !== undefined) document.getElementById('inputDescendSpeedManual').value = settings.descendSpeedManual;
+
+            // 過去ログ算出（7段階）の速度設定を読み込み
+            if (settings.extremeClimbSpeed !== undefined) document.getElementById('inputExtremeClimbSpeed').value = settings.extremeClimbSpeed;
+            if (settings.steepClimbSpeed !== undefined) document.getElementById('inputSteepClimbSpeed').value = settings.steepClimbSpeed;
+            if (settings.climbSpeed !== undefined) document.getElementById('inputClimbSpeed').value = settings.climbSpeed;
+            if (settings.flatSpeed !== undefined) document.getElementById('inputFlatSpeed').value = settings.flatSpeed;
+            if (settings.descendSpeed !== undefined) document.getElementById('inputDescendSpeed').value = settings.descendSpeed;
+            if (settings.steepDescendSpeed !== undefined) document.getElementById('inputSteepDescendSpeed').value = settings.steepDescendSpeed;
+            if (settings.extremeDescendSpeed !== undefined) document.getElementById('inputExtremeDescendSpeed').value = settings.extremeDescendSpeed;
+
             if (settings.fetchMethod !== undefined) {
                 document.getElementById('inputFetchMethod').value = settings.fetchMethod;
             }
@@ -87,6 +126,7 @@ class APP_MANAGER {
         
         this.ApplyTheme();
         this.ToggleAppModeUI();
+        this.ToggleSpeedModeUI();
         this.ToggleFetchMethodUI();
     }
 
@@ -106,7 +146,7 @@ class APP_MANAGER {
 
     // 動作モードの選択に応じてスタート日時の表示を切り替えるメソッド
     ToggleAppModeUI() {
-        const appMode = document.getElementById('inputAppMode').value;
+        const appMode = GetRadioValue('appMode');
         const isNavMode = appMode === 'nav';
         
         const groupStartTime = document.getElementById('groupStartTime');
@@ -114,6 +154,21 @@ class APP_MANAGER {
             groupStartTime.style.display = 'none';
         } else {
             groupStartTime.style.display = 'flex';
+        }
+    }
+
+    // 速度設定モードの選択に応じて入力フォーム群の表示を切り替えるメソッド
+    ToggleSpeedModeUI() {
+        const speedMode = GetRadioValue('speedMode');
+        const groupManual = document.getElementById('groupManualSpeed');
+        const groupAuto = document.getElementById('groupAutoSpeed');
+        
+        if (speedMode === 'manual') {
+            groupManual.style.display = 'flex';
+            groupAuto.style.display = 'none';
+        } else {
+            groupManual.style.display = 'none';
+            groupAuto.style.display = 'flex';
         }
     }
 
@@ -147,11 +202,22 @@ class APP_MANAGER {
         const isDark = document.getElementById('themeToggleCb') !== null ? document.getElementById('themeToggleCb').checked : false;
         const settings = {
             themeMode: isDark ? 'dark' : 'light',
-            appMode: document.getElementById('inputAppMode').value,
+            appMode: GetRadioValue('appMode'),
+            speedMode: GetRadioValue('speedMode'),
             startTime: document.getElementById('inputStartTime').value,
-            flatSpeed: document.getElementById('inputFlatSpeed').value,
+            
+            climbSpeedManual: document.getElementById('inputClimbSpeedManual').value,
+            flatSpeedManual: document.getElementById('inputFlatSpeedManual').value,
+            descendSpeedManual: document.getElementById('inputDescendSpeedManual').value,
+            
+            extremeClimbSpeed: document.getElementById('inputExtremeClimbSpeed').value,
+            steepClimbSpeed: document.getElementById('inputSteepClimbSpeed').value,
             climbSpeed: document.getElementById('inputClimbSpeed').value,
+            flatSpeed: document.getElementById('inputFlatSpeed').value,
             descendSpeed: document.getElementById('inputDescendSpeed').value,
+            steepDescendSpeed: document.getElementById('inputSteepDescendSpeed').value,
+            extremeDescendSpeed: document.getElementById('inputExtremeDescendSpeed').value,
+            
             fetchMethod: document.getElementById('inputFetchMethod').value,
             pointCount: document.getElementById('inputPointCount').value,
             timeInterval: document.getElementById('inputTimeInterval').value,
@@ -163,9 +229,30 @@ class APP_MANAGER {
 
     // 入力フォームの値が変更された際に自動保存し、表示を更新するイベントを設定するメソッド
     AttachEventListeners() {
+        // ラジオボタンのイベント設定
+        const radioNames = ['appMode', 'speedMode'];
+        for (let i = 0; i < radioNames.length; i++) {
+            const radios = document.querySelectorAll(`input[name="${radioNames[i]}"]`);
+            for (let j = 0; j < radios.length; j++) {
+                radios[j].addEventListener('change', () => {
+                    this.SaveSettings();
+                    if (radioNames[i] === 'appMode') this.ToggleAppModeUI();
+                    if (radioNames[i] === 'speedMode') this.ToggleSpeedModeUI();
+                    
+                    if (this.hasRouteData) {
+                        this.UpdateDisplay();
+                    }
+                });
+            }
+        }
+
+        // 通常のinput/select要素のイベント設定
         const inputIds = [
-            'themeToggleCb', 'inputAppMode', 'inputStartTime', 'inputFlatSpeed', 'inputClimbSpeed', 
-            'inputDescendSpeed', 'inputFetchMethod', 'inputPointCount', 
+            'themeToggleCb', 'inputStartTime', 
+            'inputClimbSpeedManual', 'inputFlatSpeedManual', 'inputDescendSpeedManual',
+            'inputExtremeClimbSpeed', 'inputSteepClimbSpeed', 'inputClimbSpeed', 
+            'inputFlatSpeed', 'inputDescendSpeed', 'inputSteepDescendSpeed', 'inputExtremeDescendSpeed',
+            'inputFetchMethod', 'inputPointCount', 
             'inputTimeInterval', 'inputGradientSpan', 'inputMarkerDisplayMode'
         ];
         
@@ -193,17 +280,70 @@ class APP_MANAGER {
                 });
             }
         }
-        
-        const appModeElement = document.getElementById('inputAppMode');
-        const hasAppModeElement = appModeElement !== null;
-        if (hasAppModeElement) {
-            appModeElement.addEventListener('change', () => this.ToggleAppModeUI());
-        }
 
         const fetchMethodElement = document.getElementById('inputFetchMethod');
         const hasFetchMethodElement = fetchMethodElement !== null;
         if (hasFetchMethodElement) {
             fetchMethodElement.addEventListener('change', () => this.ToggleFetchMethodUI());
+        }
+
+        // 過去ログファイルが選択されたら自動で算出処理を走らせる
+        const logFileInput = document.getElementById('logFileInput');
+        const hasLogFileInput = logFileInput !== null;
+        if (hasLogFileInput) {
+            logFileInput.addEventListener('change', (event) => {
+                const hasSelectedFiles = event.target.files.length > 0;
+                if (hasSelectedFiles) {
+                    this.ProcessLogFiles(event.target.files);
+                }
+            });
+        }
+    }
+
+    // モーダルウィンドウの開閉イベントを設定するメソッド
+    AttachModalListeners() {
+        const linkTerms = document.getElementById('linkTerms');
+        const linkPrivacy = document.getElementById('linkPrivacy');
+        const modal = document.getElementById('documentModal');
+        const modalBody = document.getElementById('modalBody');
+        const closeBtn = document.getElementById('modalCloseBtn');
+        const templateTerms = document.getElementById('templateTerms');
+        const templatePrivacy = document.getElementById('templatePrivacy');
+
+        const OpenModal = (template) => {
+            modalBody.innerHTML = template.innerHTML;
+            modal.style.display = 'flex';
+        };
+
+        if (linkTerms && templateTerms) {
+            linkTerms.addEventListener('click', (e) => {
+                e.preventDefault();
+                OpenModal(templateTerms);
+            });
+        }
+
+        if (linkPrivacy && templatePrivacy) {
+            linkPrivacy.addEventListener('click', (e) => {
+                e.preventDefault();
+                OpenModal(templatePrivacy);
+            });
+        }
+
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                modal.style.display = 'none';
+                modalBody.innerHTML = '';
+            });
+        }
+
+        if (modal) {
+            modal.addEventListener('click', (e) => {
+                const isOverlayClick = e.target === modal;
+                if (isOverlayClick) {
+                    modal.style.display = 'none';
+                    modalBody.innerHTML = '';
+                }
+            });
         }
     }
 
@@ -251,7 +391,7 @@ class APP_MANAGER {
             this.weatherMarkers = [];
         }
 
-        const appMode = document.getElementById('inputAppMode').value;
+        const appMode = GetRadioValue('appMode');
         const isNavMode = appMode === 'nav';
         if (isNavMode) {
             const hasCurrentLocation = this.currentLocation !== null;
@@ -290,7 +430,7 @@ class APP_MANAGER {
         let startIndex = 0;
         let startTime = new Date();
 
-        const appMode = document.getElementById('inputAppMode').value;
+        const appMode = GetRadioValue('appMode');
         const isNavMode = appMode === 'nav';
 
         if (isNavMode) {
@@ -314,9 +454,26 @@ class APP_MANAGER {
             startTime = new Date(startTimeInput);
         }
 
-        const flatSpeed = parseFloat(document.getElementById('inputFlatSpeed').value);
-        const climbSpeed = parseFloat(document.getElementById('inputClimbSpeed').value);
-        const descendSpeed = parseFloat(document.getElementById('inputDescendSpeed').value);
+        // 速度モードに応じた設定値を取得
+        const speedMode = GetRadioValue('speedMode');
+        let speeds = {};
+        if (speedMode === 'manual') {
+            speeds = {
+                climb: parseFloat(document.getElementById('inputClimbSpeedManual').value),
+                flat: parseFloat(document.getElementById('inputFlatSpeedManual').value),
+                descend: parseFloat(document.getElementById('inputDescendSpeedManual').value)
+            };
+        } else {
+            speeds = {
+                extremeClimb: parseFloat(document.getElementById('inputExtremeClimbSpeed').value),
+                steepClimb: parseFloat(document.getElementById('inputSteepClimbSpeed').value),
+                climb: parseFloat(document.getElementById('inputClimbSpeed').value),
+                flat: parseFloat(document.getElementById('inputFlatSpeed').value),
+                descend: parseFloat(document.getElementById('inputDescendSpeed').value),
+                steepDescend: parseFloat(document.getElementById('inputSteepDescendSpeed').value),
+                extremeDescend: parseFloat(document.getElementById('inputExtremeDescendSpeed').value)
+            };
+        }
         
         const fetchMethod = document.getElementById('inputFetchMethod').value;
         const pointCount = parseInt(document.getElementById('inputPointCount').value, 10);
@@ -326,7 +483,7 @@ class APP_MANAGER {
 
         this.ClearMapAndList();
 
-        CalculateEstimatedTimes(this.currentRoutePoints, startTime, flatSpeed, climbSpeed, descendSpeed, gradientSpan, startIndex);
+        CalculateEstimatedTimes(this.currentRoutePoints, startTime, speeds, speedMode, gradientSpan, startIndex);
         
         this.routeLayer = DrawRoute(this.mapInstance, this.currentRoutePoints, gradientSpan);
         
@@ -355,7 +512,7 @@ class APP_MANAGER {
         FetchRouteWeather(this.mapInstance, this.currentRoutePoints, this.weatherMarkers, this.weatherDataCache, fetchMethod, pointCount, timeInterval, markerDisplayMode, signal, startIndex);
     }
 
-    // ファイル選択時のイベントを処理するメソッド
+    // GPXファイル選択時のイベントを処理するメソッド
     HandleFileSelect(event) {
         const fileList = event.target.files;
         const fileExists = fileList.length > 0;
@@ -381,6 +538,223 @@ class APP_MANAGER {
             }
         };
         fileReader.readAsText(fileList[0]);
+    }
+
+    // 選択された過去ログ(.fit, .gpx)から平均速度を算出するメソッド
+    async ProcessLogFiles(files) {
+        const speedData = {
+            extremeClimb: [], steepClimb: [], climb: [],
+            flat: [], descend: [], steepDescend: [], extremeDescend: []
+        };
+
+        let processedCount = 0;
+
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const lowerName = file.name.toLowerCase();
+            
+            if (lowerName.endsWith('.gpx')) {
+                const gpxText = await file.text();
+                this.ExtractSpeedFromGpx(gpxText, speedData);
+                processedCount++;
+            } else if (lowerName.endsWith('.fit')) {
+                try {
+                    const buffer = await file.arrayBuffer();
+                    await this.ExtractSpeedFromFit(buffer, speedData);
+                    processedCount++;
+                } catch (err) {
+                    console.error("FITファイルの読み込みエラー:", err);
+                    alert("FIT解析ライブラリのロード、またはファイルの解析に失敗しました。インターネット接続を確認するか、.gpxファイルをご利用ください。");
+                }
+            }
+        }
+
+        const hasProcessedFiles = processedCount > 0;
+        if (hasProcessedFiles) {
+            this.UpdateSpeedFormFromData(speedData);
+        }
+    }
+
+    // FITファイルのArrayBufferからポイント間の速度と勾配を抽出して分類するメソッド (スパン方式)
+    async ExtractSpeedFromFit(buffer, speedData) {
+        let FitParser;
+        try {
+            const module = await import('https://esm.sh/fit-file-parser');
+            FitParser = module.default;
+        } catch (error) {
+            throw new Error("FIT解析モジュールの読み込みに失敗しました。");
+        }
+
+        return new Promise((resolve, reject) => {
+            const fitParser = new FitParser({
+                force: true,
+                speedUnit: 'km/h',
+                lengthUnit: 'km',
+                temperatureUnit: 'celcius',
+            });
+            
+            fitParser.parse(buffer, (error, data) => {
+                const hasValidData = !error && data && data.records;
+                if (!hasValidData) {
+                    console.error("FIT parse error", error);
+                    resolve();
+                    return;
+                }
+                
+                let anchorRecord = null;
+                const records = data.records;
+                
+                for (let i = 0; i < records.length; i++) {
+                    const record = records[i];
+                    const hasPositionData = record.position_lat !== undefined && record.position_long !== undefined && record.altitude !== undefined && record.timestamp;
+                    
+                    if (hasPositionData) {
+                        const lat = NormalizeDegree(record.position_lat);
+                        const lon = NormalizeDegree(record.position_long);
+                        
+                        const isFirstRecord = anchorRecord === null;
+                        if (isFirstRecord) {
+                            anchorRecord = { lat: lat, lon: lon, altitude: record.altitude, timestamp: record.timestamp };
+                            continue;
+                        }
+                        
+                        const dist = CalculateDistance(anchorRecord.lat, anchorRecord.lon, lat, lon);
+                        
+                        // 50メートル (0.05km) 以上の移動があった場合に速度を計算する
+                        const isFarEnough = dist >= 0.05;
+                        if (isFarEnough) {
+                            const timeDiffHours = (new Date(record.timestamp).getTime() - new Date(anchorRecord.timestamp).getTime()) / (1000 * 60 * 60);
+                            const eleDiff = record.altitude - anchorRecord.altitude;
+                            
+                            ClassifySpeedData(dist, timeDiffHours, eleDiff, speedData);
+                            
+                            // 次の区間の起点として現在のポイントをセット
+                            anchorRecord = { lat: lat, lon: lon, altitude: record.altitude, timestamp: record.timestamp };
+                        }
+                    }
+                }
+                resolve();
+            });
+        });
+    }
+
+    // GPX文字列からポイント間の速度と勾配を抽出して分類するメソッド (スパン方式)
+    ExtractSpeedFromGpx(gpxString, speedData) {
+        const points = ParseGpx(gpxString);
+        let anchorPoint = null;
+        
+        for (let i = 0; i < points.length; i++) {
+            const pt = points[i];
+            const hasTimeData = pt.time !== null;
+            
+            if (hasTimeData) {
+                const isFirstPoint = anchorPoint === null;
+                if (isFirstPoint) {
+                    anchorPoint = pt;
+                    continue;
+                }
+
+                const dist = CalculateDistance(anchorPoint.lat, anchorPoint.lng, pt.lat, pt.lng);
+                
+                // 50メートル (0.05km) 以上の移動があった場合に速度を計算する
+                const isFarEnough = dist >= 0.05;
+                if (isFarEnough) {
+                    const timeDiffHours = (pt.time.getTime() - anchorPoint.time.getTime()) / (1000 * 60 * 60);
+                    const eleDiff = pt.ele - anchorPoint.ele;
+                    
+                    ClassifySpeedData(dist, timeDiffHours, eleDiff, speedData);
+                    
+                    anchorPoint = pt;
+                }
+            }
+        }
+    }
+
+    // 抽出された速度データをフォームの入力欄に反映して保存するメソッド
+    UpdateSpeedFormFromData(speedData) {
+        const calcAvg = (arr, currentValStr) => {
+            const hasNoData = arr.length === 0;
+            if (hasNoData) return currentValStr;
+            const sum = arr.reduce((a, b) => a + b, 0);
+            return Math.round(sum / arr.length).toString();
+        };
+
+        const ids = [
+            { id: 'inputExtremeClimbSpeed', data: speedData.extremeClimb },
+            { id: 'inputSteepClimbSpeed', data: speedData.steepClimb },
+            { id: 'inputClimbSpeed', data: speedData.climb },
+            { id: 'inputFlatSpeed', data: speedData.flat },
+            { id: 'inputDescendSpeed', data: speedData.descend },
+            { id: 'inputSteepDescendSpeed', data: speedData.steepDescend },
+            { id: 'inputExtremeDescendSpeed', data: speedData.extremeDescend }
+        ];
+
+        let hasUpdates = false;
+
+        for (let i = 0; i < ids.length; i++) {
+            const el = document.getElementById(ids[i].id);
+            const elementExists = el !== null;
+            const hasExtractedData = ids[i].data.length > 0;
+            
+            if (elementExists && hasExtractedData) {
+                el.value = calcAvg(ids[i].data, el.value);
+                hasUpdates = true;
+            }
+        }
+
+        if (hasUpdates) {
+            this.SaveSettings();
+            
+            // ファイル入力欄をリセットして同じファイルを再選択できるようにする
+            const fileInput = document.getElementById('logFileInput');
+            if (fileInput) fileInput.value = "";
+            
+            alert("ログデータから過去の平均速度を算出し、設定を更新しました！\n（データが存在しない勾配区分は元の設定を維持しています）");
+            
+            if (this.hasRouteData) {
+                this.UpdateDisplay();
+            }
+        } else {
+            alert("有効な速度データがログから抽出できませんでした。");
+        }
+    }
+}
+
+// FitParserから得られるSemicircles形式の座標を度数に変換する補助関数
+function NormalizeDegree(val) {
+    const isOutOfRange = Math.abs(val) > 180;
+    if (isOutOfRange) {
+        return val * (180 / Math.pow(2, 31));
+    }
+    return val;
+}
+
+// 距離・時間・標高差から速度と勾配を求め、適切なカテゴリの配列に分類する関数
+function ClassifySpeedData(distKm, timeDiffHours, eleDiffMeters, speedData) {
+    const hasTime = timeDiffHours > 0;
+    if (hasTime) {
+        const speed = distKm / timeDiffHours;
+        // 極端に遅い（2km/h未満の歩き・停止）や異常に速い（100km/h以上）データはノイズとして除外
+        const isValidSpeed = speed > 2 && speed < 100;
+        
+        if (isValidSpeed) {
+            const gradient = (eleDiffMeters / (distKm * 1000)) * 100;
+            
+            const isExtremeClimb = gradient >= 10;
+            const isSteepClimb = gradient >= 5;
+            const isClimb = gradient >= 2;
+            const isExtremeDescend = gradient <= -10;
+            const isSteepDescend = gradient <= -5;
+            const isDescend = gradient <= -2;
+            
+            if (isExtremeClimb) speedData.extremeClimb.push(speed);
+            else if (isSteepClimb) speedData.steepClimb.push(speed);
+            else if (isClimb) speedData.climb.push(speed);
+            else if (isExtremeDescend) speedData.extremeDescend.push(speed);
+            else if (isSteepDescend) speedData.steepDescend.push(speed);
+            else if (isDescend) speedData.descend.push(speed);
+            else speedData.flat.push(speed);
+        }
     }
 }
 
@@ -470,24 +844,26 @@ function CalculateSmoothedGradient(points, startIndex, spanCount) {
     return 0;
 }
 
-// 勾配に応じてクラス名を返す関数（色をCSSで制御するため）
+// 勾配に応じてクラス名を返す関数（7段階拡張版）
 function GetGradientClass(gradient) {
+    const isExtremeClimb = gradient >= 10;
     const isSteepClimb = gradient >= 5;
-    if (isSteepClimb) return 'route-steep-climb';
-    
     const isClimb = gradient >= 2;
-    if (isClimb) return 'route-climb';
-    
+    const isExtremeDescend = gradient <= -10;
     const isSteepDescend = gradient <= -5;
-    if (isSteepDescend) return 'route-steep-descend';
-    
     const isDescend = gradient <= -2;
+
+    if (isExtremeClimb) return 'route-extreme-climb';
+    if (isSteepClimb) return 'route-steep-climb';
+    if (isClimb) return 'route-climb';
+    if (isExtremeDescend) return 'route-extreme-descend';
+    if (isSteepDescend) return 'route-steep-descend';
     if (isDescend) return 'route-descend';
     
     return 'route-flat';
 }
 
-// GPXデータを解析して緯度経度および標高の配列を取得する関数
+// GPXデータを解析して緯度経度、標高、時刻の配列を取得する関数
 function ParseGpx(gpxString) {
     const parser = new DOMParser();
     const xmlDoc = parser.parseFromString(gpxString, "text/xml");
@@ -521,14 +897,21 @@ function ParseGpx(gpxString) {
             ele = parseFloat(eleNodes[0].textContent);
         }
 
-        points.push({ lat: lat, lng: lon, ele: ele, estimatedTime: null, totalDistance: 0 });
+        let time = null;
+        const timeNodes = trackPoints[i].getElementsByTagNameNS("*", "time");
+        const timeExists = timeNodes.length > 0;
+        if (timeExists) {
+            time = new Date(timeNodes[0].textContent);
+        }
+
+        points.push({ lat: lat, lng: lon, ele: ele, time: time, estimatedTime: null, totalDistance: 0 });
     }
     
     return points;
 }
 
 // 勾配と速度に基づいて各ポイントへの到着予想時刻および累積距離を計算する関数
-function CalculateEstimatedTimes(points, startTime, flatSpeed, climbSpeed, descendSpeed, gradientSpan, startIndex = 0) {
+function CalculateEstimatedTimes(points, startTime, speeds, speedMode, gradientSpan, startIndex = 0) {
     let currentTimeMs = startTime.getTime();
     let currentTotalDistance = 0;
     
@@ -552,16 +935,32 @@ function CalculateEstimatedTimes(points, startTime, flatSpeed, climbSpeed, desce
             if (hasDistance) {
                 currentTotalDistance += distance;
                 
-                let currentSpeed = flatSpeed;
                 const gradient = CalculateSmoothedGradient(points, i, gradientSpan);
+                let currentSpeed = speeds.flat;
                 
-                const isClimbing = gradient > 2;
-                const isDescending = gradient < -2;
-                
-                if (isClimbing) {
-                    currentSpeed = climbSpeed;
-                } else if (isDescending) {
-                    currentSpeed = descendSpeed;
+                const isManualMode = speedMode === 'manual';
+                if (isManualMode) {
+                    // 手動モードの場合はシンプルな3段階判定
+                    const isManualClimb = gradient >= 2;
+                    const isManualDescend = gradient <= -2;
+                    
+                    if (isManualClimb) currentSpeed = speeds.climb;
+                    else if (isManualDescend) currentSpeed = speeds.descend;
+                } else {
+                    // 自動モードの場合は7段階判定
+                    const isExtremeClimb = gradient >= 10;
+                    const isSteepClimb = gradient >= 5;
+                    const isClimb = gradient >= 2;
+                    const isExtremeDescend = gradient <= -10;
+                    const isSteepDescend = gradient <= -5;
+                    const isDescend = gradient <= -2;
+
+                    if (isExtremeClimb) currentSpeed = speeds.extremeClimb;
+                    else if (isSteepClimb) currentSpeed = speeds.steepClimb;
+                    else if (isClimb) currentSpeed = speeds.climb;
+                    else if (isExtremeDescend) currentSpeed = speeds.extremeDescend;
+                    else if (isSteepDescend) currentSpeed = speeds.steepDescend;
+                    else if (isDescend) currentSpeed = speeds.descend;
                 }
                 
                 const durationHours = distance / currentSpeed;
@@ -582,7 +981,7 @@ function DrawRoute(mapObj, points, gradientSpan) {
         const p2 = points[i + 1];
         
         const gradient = CalculateSmoothedGradient(points, i, gradientSpan);
-        const segmentClass = GetGradientClass(gradient);
+        const segmentClass = GetGradientClass(gradient); // 描画色はモードによらず常に7段階
         
         const isInitial = currentClass === null;
         const isSameClass = currentClass === segmentClass;
@@ -805,7 +1204,7 @@ async function FetchRouteWeather(mapObj, points, markerArray, weatherCacheArray,
         const isLastTarget = i === targetPoints.length - 1;
         
         try {
-            const requestUrl = `${constWeatherApiUrl}?latitude=${currentPoint.lat}&longitude=${currentPoint.lng}&hourly=temperature_2m,windspeed_10m,winddirection_10m,precipitation,weathercode&windspeed_unit=ms&timezone=auto`;
+            const requestUrl = `${constWeatherApiUrl}?latitude=${currentPoint.lat}&longitude=${currentPoint.lng}&hourly=temperature_2m,windspeed_10m,winddirection_10m,precipitation,precipitation_probability,weathercode&windspeed_unit=ms&timezone=auto`;
             const response = await fetch(requestUrl, { signal: abortSignal });
             const weatherData = await response.json();
             
@@ -819,6 +1218,7 @@ async function FetchRouteWeather(mapObj, points, markerArray, weatherCacheArray,
                 const windSpeed = Math.round(weatherData.hourly.windspeed_10m[targetIndex]);
                 const windDirection = weatherData.hourly.winddirection_10m[targetIndex];
                 const precipitation = Math.round(weatherData.hourly.precipitation[targetIndex]);
+                const precipitationProbability = weatherData.hourly.precipitation_probability ? Math.round(weatherData.hourly.precipitation_probability[targetIndex]) : 0;
                 const weatherCode = weatherData.hourly.weathercode[targetIndex];
                 
                 const weatherDesc = GetWeatherDescription(weatherCode);
@@ -854,7 +1254,8 @@ async function FetchRouteWeather(mapObj, points, markerArray, weatherCacheArray,
                         <strong>地点 ${pointLabelStr}</strong><br>
                         到着予想: ${timeString}<br>
                         天気: ${weatherDescStr}<br>
-                        降水: ${precipitation} mm<br>
+                        降水確率: ${precipitationProbability}%<br>
+                        降水量: ${precipitation} mm<br>
                         気温: ${temperature} °C<br>
                         風: ${windSpeed} m/s<br>
                         進路: ${headingStr}
@@ -871,6 +1272,7 @@ async function FetchRouteWeather(mapObj, points, markerArray, weatherCacheArray,
                     windSpeed: windSpeed,
                     heading: heading,
                     headingStr: headingStr,
+                    precipitationProbability: precipitationProbability,
                     popupContent: popupContent
                 };
                 weatherCacheArray.push(weatherDataObj);
@@ -942,7 +1344,10 @@ async function FetchRouteWeather(mapObj, points, markerArray, weatherCacheArray,
                     rowTime.appendChild(tdTime);
 
                     const tdWeather = document.createElement('td');
-                    tdWeather.innerHTML = `<div style="font-size: 1.5rem;" title="${weatherDesc.text}">${weatherDesc.emoji}</div>`;
+                    tdWeather.innerHTML = `
+                        <div style="font-size: 1.5rem;" title="${weatherDesc.text}">${weatherDesc.emoji}</div>
+                        <div class="precip-probability-text" title="降水確率">${precipitationProbability}%</div>
+                    `;
                     rowWeather.appendChild(tdWeather);
 
                     const tdPrecip = document.createElement('td');

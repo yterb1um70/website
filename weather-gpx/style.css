@@ -20,13 +20,18 @@
     --text-shadow-color: #ffffff;
     --footer-border: #dddddd;
     --footer-text: #666666;
+    --highlight-bg: rgba(0, 0, 0, 0.04);
+    --modal-overlay-bg: rgba(0, 0, 0, 0.5);
 
-    /* 地図と区別しやすいルート用の高コントラストカラー */
-    --route-steep-climb: #e74c3c;
-    --route-climb: #f39c12;
-    --route-flat: #00bcd4;
-    --route-descend: #9b59b6;
-    --route-steep-descend: #00008b;
+    /* 地図と区別しやすいルート用の高コントラストカラー (7段階) */
+    --route-extreme-climb: #c0392b; /* 濃い赤 */
+    --route-steep-climb: #e74c3c;   /* 赤 */
+    --route-climb: #f39c12;         /* オレンジ */
+    --route-flat: #00bcd4;          /* 水色 */
+    --route-descend: #9b59b6;       /* 紫 */
+    --route-steep-descend: #8e44ad; /* 濃い紫 */
+    --route-extreme-descend: #2c3e50; /* 濃い青みがかったグレー */
+    
     --wind-arrow-color: #0984e3;
     --heading-arrow-color: #d63031;
 }
@@ -53,13 +58,18 @@
     --text-shadow-color: #111111;
     --footer-border: #444444;
     --footer-text: #aaaaaa;
+    --highlight-bg: rgba(255, 255, 255, 0.05);
+    --modal-overlay-bg: rgba(0, 0, 0, 0.7);
 
-    /* ダークマップ上で映えるネオンカラー系のパレット */
+    /* ダークマップ上で映えるネオンカラー系のパレット (7段階) */
+    --route-extreme-climb: #ff3333;
     --route-steep-climb: #ff5252;
     --route-climb: #ffb142;
     --route-flat: #34ace0;
     --route-descend: #ff77ff;
-    --route-steep-descend: #00d2d3;
+    --route-steep-descend: #d980fa;
+    --route-extreme-descend: #833471;
+    
     --wind-arrow-color: #48dbfb;
     --heading-arrow-color: #ff6b81;
 }
@@ -146,27 +156,72 @@ input:checked + .toggle-slider:before {
     padding: 12px 15px;
     border-left: 5px solid var(--disclaimer-border);
     border-radius: 4px;
-    margin-bottom: 15px;
+    margin-bottom: 20px;
     font-size: 0.9rem;
     font-weight: bold;
     line-height: 1.4;
 }
 
-.controls {
-    margin-bottom: 15px;
-    background: var(--panel-bg);
-    padding: 15px;
-    border-radius: 5px;
-    box-shadow: 0 2px 4px var(--panel-shadow);
+/* =======================================================
+   2カラムレイアウト設定
+   ======================================================= */
+.app-layout {
     display: flex;
-    flex-wrap: wrap;
+    gap: 20px;
+    align-items: flex-start;
+}
+
+/* 左側：サイドバー（設定エリア） */
+.sidebar {
+    flex: 0 0 330px;
+    display: flex;
+    flex-direction: column;
     gap: 15px;
 }
 
+/* 各設定グループ（カード） */
+.settings-group {
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 2px 4px var(--panel-shadow);
+}
+
+.settings-group h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 1.05rem;
+    color: var(--text-color);
+    border-bottom: 2px solid var(--info-box-border);
+    padding-bottom: 5px;
+}
+
+/* ラジオボタングループのスタイル */
+.radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 5px;
+}
+
+.radio-group label {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.95rem;
+}
+
+/* コントロール項目のスタイル */
 .control-group {
     display: flex;
     flex-direction: column;
-    min-width: 150px;
+    margin-bottom: 12px;
+}
+
+.control-group:last-child {
+    margin-bottom: 0;
 }
 
 .control-group label {
@@ -176,20 +231,52 @@ input:checked + .toggle-slider:before {
     opacity: 0.9;
 }
 
-.control-group input, .control-group select {
-    padding: 5px;
+.control-group input[type="number"], 
+.control-group input[type="datetime-local"], 
+.control-group select, 
+.control-group input[type="file"] {
+    padding: 6px;
     border: 1px solid var(--panel-border);
-    border-radius: 3px;
-    font-size: 1rem;
+    border-radius: 4px;
+    font-size: 0.95rem;
     background-color: var(--panel-bg);
     color: var(--text-color);
+    width: 100%;
+    box-sizing: border-box;
 }
 
-/* メインコンテンツのレイアウト設定（縦積み） */
-.main-content {
+/* 速度設定フォームのボタングループ */
+.speed-input-group {
+    flex-direction: column;
+    gap: 0;
+    width: 100%;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px dashed var(--panel-border);
+}
+
+.log-file-container {
+    background: var(--highlight-bg);
+    padding: 12px;
+    border-radius: 6px;
+    border: 1px dashed var(--panel-border);
+    margin-bottom: 15px;
+}
+
+.helper-text {
+    color: var(--footer-text);
+    margin-top: 5px;
+    display: block;
+    font-size: 0.8rem;
+}
+
+/* 右側：メインコンテンツ（地図とリスト） */
+.main-area {
+    flex: 1;
     display: flex;
     flex-direction: column;
     gap: 20px;
+    min-width: 0; /* Flexbox内のあふれ防止 */
 }
 
 /* 地図の高さを指定 */
@@ -197,10 +284,38 @@ input:checked + .toggle-slider:before {
     position: relative;
     height: 600px;
     width: 100%;
-    border-radius: 5px;
+    border-radius: 8px;
     box-shadow: 0 2px 4px var(--panel-shadow);
     background-color: #e5e3df; /* Leafletのデフォルト背景に近い色 */
     z-index: 1;
+}
+
+/* 地図内右上のマーカー表示設定コントロール */
+.marker-display-control {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: var(--legend-bg);
+    padding: 8px 12px;
+    border-radius: 5px;
+    box-shadow: 0 1px 3px var(--panel-shadow);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: var(--text-color);
+    border: 1px solid var(--panel-border);
+}
+
+.marker-display-control select {
+    padding: 4px 6px;
+    border: 1px solid var(--panel-border);
+    border-radius: 3px;
+    background-color: var(--panel-bg);
+    color: var(--text-color);
+    font-size: 0.85rem;
+    cursor: pointer;
 }
 
 /* ダークモード時の地図タイルの色反転処理 */
@@ -212,18 +327,22 @@ input:checked + .toggle-slider:before {
 }
 
 /* 勾配色 ルートパス用クラス (Leafletのインラインを上書き) */
+path.route-extreme-climb { stroke: var(--route-extreme-climb) !important; }
 path.route-steep-climb { stroke: var(--route-steep-climb) !important; }
 path.route-climb { stroke: var(--route-climb) !important; }
 path.route-flat { stroke: var(--route-flat) !important; }
 path.route-descend { stroke: var(--route-descend) !important; }
 path.route-steep-descend { stroke: var(--route-steep-descend) !important; }
+path.route-extreme-descend { stroke: var(--route-extreme-descend) !important; }
 
 /* 勾配色の凡例用カラースタイル */
+.legend-extreme-climb { background-color: var(--route-extreme-climb); }
 .legend-steep-climb { background-color: var(--route-steep-climb); }
 .legend-climb { background-color: var(--route-climb); }
 .legend-flat { background-color: var(--route-flat); }
 .legend-descend { background-color: var(--route-descend); }
 .legend-steep-descend { background-color: var(--route-steep-descend); }
+.legend-extreme-descend { background-color: var(--route-extreme-descend); }
 
 /* 進行方向矢印の凡例スタイル */
 .route-legend span.legend-heading-arrow {
@@ -275,7 +394,7 @@ path.route-steep-descend { stroke: var(--route-steep-descend) !important; }
     width: 100%;
     background: var(--panel-bg);
     padding: 15px;
-    border-radius: 5px;
+    border-radius: 8px;
     box-shadow: 0 2px 4px var(--panel-shadow);
     box-sizing: border-box;
 }
@@ -323,6 +442,15 @@ path.route-steep-descend { stroke: var(--route-steep-descend) !important; }
     background-color: var(--table-row-weather-bg);
 }
 
+/* 降水確率テキストのスタイル */
+.precip-probability-text {
+    font-size: 0.75rem;
+    font-weight: bold;
+    color: var(--text-color);
+    opacity: 0.85;
+    margin-top: 2px;
+}
+
 .unit-text {
     font-size: 0.75rem;
     opacity: 0.7;
@@ -366,7 +494,7 @@ path.route-steep-descend { stroke: var(--route-steep-descend) !important; }
 }
 
 .custom-info-number {
-    font-size: 15px; /* マーカー右端はみ出し防止のため縮小 */
+    font-size: 15px;
     font-weight: 900;
 }
 
@@ -466,7 +594,7 @@ path.route-steep-descend { stroke: var(--route-steep-descend) !important; }
 }
 
 /* =======================================================
-   フッター・規約ページ用スタイル
+   フッター・モーダル用スタイル
    ======================================================= */
 footer {
     margin-top: 40px;
@@ -487,35 +615,78 @@ footer a:hover {
     text-decoration: underline;
 }
 
-/* 規約・ポリシーページ等の文書用コンテナ */
-.document-container {
-    max-width: 800px;
-    margin: 0 auto;
-    background: var(--panel-bg);
-    padding: 30px;
-    border-radius: 5px;
-    box-shadow: 0 2px 4px var(--panel-shadow);
-    line-height: 1.6;
+/* モーダルオーバーレイ */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--modal-overlay-bg);
+    z-index: 2000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* モーダルコンテンツ領域 */
+.modal-content {
+    background-color: var(--panel-bg);
     color: var(--text-color);
+    width: 90%;
+    max-width: 800px;
+    max-height: 85vh;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+/* 閉じるボタン */
+.modal-close {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 1.8rem;
+    font-weight: bold;
+    cursor: pointer;
+    color: var(--text-color);
+    z-index: 2001;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.modal-close:hover {
+    opacity: 1;
+}
+
+/* 文書コンテナ（モーダル内のテキスト表示用） */
+.document-container {
+    padding: 30px;
+    overflow-y: auto;
+    line-height: 1.6;
 }
 
 .document-container h1 {
-    font-size: 1.8rem;
+    font-size: 1.5rem;
     border-bottom: 2px solid var(--info-box-border);
     padding-bottom: 10px;
     margin-bottom: 20px;
+    margin-top: 0;
+    padding-right: 20px;
 }
 
 .document-container h2 {
-    font-size: 1.3rem;
-    margin-top: 30px;
+    font-size: 1.2rem;
+    margin-top: 25px;
     border-left: 4px solid var(--info-box-border);
     padding-left: 10px;
     margin-bottom: 15px;
 }
 
 .document-container p, .document-container li {
-    font-size: 1rem;
+    font-size: 0.95rem;
     margin-bottom: 10px;
 }
 
@@ -527,7 +698,7 @@ footer a:hover {
 /* =======================================================
    スマートフォン向けレスポンシブ対応
    ======================================================= */
-@media screen and (max-width: 768px) {
+@media screen and (max-width: 900px) {
     body {
         margin: 10px;
     }
@@ -538,18 +709,13 @@ footer a:hover {
         gap: 10px;
     }
     
-    .controls {
+    /* スマホ画面では2カラムを解除し縦積みにする */
+    .app-layout {
         flex-direction: column;
-        gap: 10px;
     }
-
-    .control-group {
-        min-width: 100%;
-    }
-
-    .main-content {
-        flex-direction: column;
-        display: block; /* Flexboxの影響をリセット */
+    .sidebar {
+        flex: none;
+        width: 100%;
     }
 
     #map {
@@ -557,7 +723,7 @@ footer a:hover {
         min-width: 0;
         height: 450px;
         flex: none;
-        margin-bottom: 20px;
+        margin-bottom: 0;
     }
 
     #weatherListContainer {

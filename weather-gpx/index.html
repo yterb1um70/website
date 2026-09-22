@@ -7,6 +7,8 @@
     <!-- LeafletのCSSを読み込む -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="style.css">
+    <!-- FITファイルをブラウザでパースするためのライブラリ -->
+    <script src="https://cdn.jsdelivr.net/npm/fit-file-parser@1.9.0/dist/fit-parser.js"></script>
 </head>
 <body>
     <header class="app-header">
@@ -26,121 +28,249 @@
         ※当アプリが提供する到着時刻や天気はシミュレーションによる目安であり、正確性を保証するものではありません。実際の登山や走行時は、必ずご自身で最新の気象情報を確認し、自己責任で安全を確保してください。
     </div>
 
-    <div class="controls">
-        <!-- 動作モード切り替え -->
-        <div class="control-group">
-            <label for="inputAppMode">動作モード:</label>
-            <select id="inputAppMode">
-                <option value="plan">ルート計画（日時指定）</option>
-                <option value="nav">現在地ナビ（現在地から予想）</option>
-            </select>
-        </div>
+    <!-- メインレイアウトコンテナ -->
+    <div class="app-layout">
+        <!-- 左側：設定サイドバー -->
+        <aside class="sidebar">
+            
+            <!-- ルート読み込みグループ -->
+            <section class="settings-group">
+                <h3>GPXルート読み込み</h3>
+                <div class="control-group">
+                    <input type="file" id="gpxFileInput" accept=".gpx">
+                </div>
+            </section>
 
-        <div class="control-group" id="groupStartTime">
-            <label for="inputStartTime">スタート日時:</label>
-            <input type="datetime-local" id="inputStartTime">
-        </div>
-        
-        <div class="control-group">
-            <label for="inputFlatSpeed">平地平均速度 (km/h):</label>
-            <input type="number" id="inputFlatSpeed" value="15" min="1">
-        </div>
-        <div class="control-group">
-            <label for="inputClimbSpeed">上り平均速度 (km/h):</label>
-            <input type="number" id="inputClimbSpeed" value="10" min="1">
-        </div>
-        <div class="control-group">
-            <label for="inputDescendSpeed">下り平均速度 (km/h):</label>
-            <input type="number" id="inputDescendSpeed" value="20" min="1">
-        </div>
-        
-        <!-- 天気取得方法の切り替え -->
-        <div class="control-group">
-            <label for="inputFetchMethod">天気取得方法:</label>
-            <select id="inputFetchMethod">
-                <option value="pointCount">ポイント数で分割</option>
-                <option value="timeInterval">時間間隔で分割</option>
-            </select>
-        </div>
-        
-        <!-- ポイント数設定（デフォルト表示） -->
-        <div class="control-group" id="groupPointCount">
-            <label for="inputPointCount">天気取得ポイント数:</label>
-            <input type="number" id="inputPointCount" value="10" min="2" max="50">
-        </div>
-        
-        <!-- 時間間隔設定（切り替えで表示） -->
-        <div class="control-group" id="groupTimeInterval" style="display: none;">
-            <label for="inputTimeInterval">時間間隔 (分):</label>
-            <input type="number" id="inputTimeInterval" value="60" min="10" max="360">
-        </div>
+            <!-- 動作モードグループ -->
+            <section class="settings-group">
+                <h3>動作モード</h3>
+                <div class="control-group">
+                    <div class="radio-group">
+                        <label><input type="radio" name="appMode" value="plan" checked> ルート計画（日時指定）</label>
+                        <label><input type="radio" name="appMode" value="nav"> 現在地ナビ（現在地から予想）</label>
+                    </div>
+                </div>
+                <div class="control-group" id="groupStartTime">
+                    <label for="inputStartTime">スタート日時:</label>
+                    <input type="datetime-local" id="inputStartTime">
+                </div>
+            </section>
 
-        <div class="control-group">
-            <label for="inputGradientSpan">勾配スパン (地点数):</label>
-            <input type="number" id="inputGradientSpan" value="10" min="1" max="100">
-        </div>
+            <!-- 速度設定グループ -->
+            <section class="settings-group">
+                <h3>速度設定</h3>
+                <div class="control-group">
+                    <div class="radio-group">
+                        <label><input type="radio" name="speedMode" value="manual" checked> 手動設定（3段階）</label>
+                        <label><input type="radio" name="speedMode" value="auto"> 過去ログから算出（7段階）</label>
+                    </div>
+                </div>
+                
+                <!-- 手動設定（3段階） -->
+                <div id="groupManualSpeed" class="speed-input-group" style="display: flex;">
+                    <div class="control-group">
+                        <label for="inputClimbSpeedManual">上り平均速度 (km/h):</label>
+                        <input type="number" id="inputClimbSpeedManual" value="10" min="1">
+                    </div>
+                    <div class="control-group">
+                        <label for="inputFlatSpeedManual">平地平均速度 (km/h):</label>
+                        <input type="number" id="inputFlatSpeedManual" value="15" min="1">
+                    </div>
+                    <div class="control-group">
+                        <label for="inputDescendSpeedManual">下り平均速度 (km/h):</label>
+                        <input type="number" id="inputDescendSpeedManual" value="20" min="1">
+                    </div>
+                </div>
 
-        <!-- マーカーの表示モード切り替え -->
-        <div class="control-group">
-            <label for="inputMarkerDisplayMode">マーカー表示:</label>
-            <select id="inputMarkerDisplayMode">
-                <option value="full">全て表示 (時間・天気・風)</option>
-                <option value="weatherWind">天気・風向・風速</option>
-                <option value="windOnly">風向・風速</option>
-                <option value="arrowOnly">風向の矢印のみ</option>
-                <option value="none">なし</option>
-            </select>
-        </div>
+                <!-- 過去ログ設定（7段階） -->
+                <div id="groupAutoSpeed" class="speed-input-group" style="display: none;">
+                    <div class="control-group log-file-container">
+                        <label for="logFileInput">自動算出用ログ(.fit / .gpx)を選択:</label>
+                        <input type="file" id="logFileInput" accept=".fit, .gpx" multiple>
+                        <small class="helper-text">※選択すると自動で計算されます</small>
+                    </div>
 
-        <div class="control-group">
-            <label for="gpxFileInput">GPXファイルを選択:</label>
-            <input type="file" id="gpxFileInput" accept=".gpx">
-        </div>
-    </div>
-    
-    <!-- 地図とリストを並べるメインコンテナ -->
-    <div class="main-content">
-        <!-- 地図を表示するためのコンテナ -->
-        <div id="map">
-            <!-- 勾配色の凡例 -->
-            <div class="route-legend">
-                <div><span class="legend-steep-climb"></span>急な上り (5%以上)</div>
-                <div><span class="legend-climb"></span>上り (2%〜5%)</div>
-                <div><span class="legend-flat"></span>平坦 (-2%〜2%)</div>
-                <div><span class="legend-descend"></span>下り (-5%〜-2%)</div>
-                <div><span class="legend-steep-descend"></span>急な下り (-5%以下)</div>
-                <div><span class="legend-heading-arrow">→</span>進行方向</div>
+                    <div class="control-group">
+                        <label for="inputExtremeClimbSpeed">激坂上り (10%以上) km/h:</label>
+                        <input type="number" id="inputExtremeClimbSpeed" value="8" min="1">
+                    </div>
+                    <div class="control-group">
+                        <label for="inputSteepClimbSpeed">急な上り (5〜9%) km/h:</label>
+                        <input type="number" id="inputSteepClimbSpeed" value="10" min="1">
+                    </div>
+                    <div class="control-group">
+                        <label for="inputClimbSpeed">上り (2〜4%) km/h:</label>
+                        <input type="number" id="inputClimbSpeed" value="13" min="1">
+                    </div>
+                    <div class="control-group">
+                        <label for="inputFlatSpeed">平坦 (-1〜1%) km/h:</label>
+                        <input type="number" id="inputFlatSpeed" value="18" min="1">
+                    </div>
+                    <div class="control-group">
+                        <label for="inputDescendSpeed">下り (-2〜-4%) km/h:</label>
+                        <input type="number" id="inputDescendSpeed" value="22" min="1">
+                    </div>
+                    <div class="control-group">
+                        <label for="inputSteepDescendSpeed">急な下り (-5〜-9%) km/h:</label>
+                        <input type="number" id="inputSteepDescendSpeed" value="25" min="1">
+                    </div>
+                    <div class="control-group">
+                        <label for="inputExtremeDescendSpeed">激坂下り (-10%以下) km/h:</label>
+                        <input type="number" id="inputExtremeDescendSpeed" value="20" min="1">
+                    </div>
+                </div>
+            </section>
+
+            <!-- 天気取得・表示設定グループ -->
+            <section class="settings-group">
+                <h3>天気取得設定</h3>
+                <div class="control-group">
+                    <label for="inputFetchMethod">天気取得方法:</label>
+                    <select id="inputFetchMethod">
+                        <option value="pointCount">ポイント数で分割</option>
+                        <option value="timeInterval">時間間隔で分割</option>
+                    </select>
+                </div>
+                
+                <div class="control-group" id="groupPointCount">
+                    <label for="inputPointCount">天気取得ポイント数:</label>
+                    <input type="number" id="inputPointCount" value="10" min="2" max="50">
+                </div>
+                
+                <div class="control-group" id="groupTimeInterval" style="display: none;">
+                    <label for="inputTimeInterval">時間間隔 (分):</label>
+                    <input type="number" id="inputTimeInterval" value="60" min="10" max="360">
+                </div>
+
+                <div class="control-group">
+                    <label for="inputGradientSpan">勾配スパン (地点数):</label>
+                    <input type="number" id="inputGradientSpan" value="10" min="1" max="100">
+                </div>
+            </section>
+
+        </aside>
+        
+        <!-- 右側：地図とリストメインエリア -->
+        <main class="main-area">
+            <!-- 地図を表示するためのコンテナ -->
+            <div id="map">
+                <!-- 地図内右上のマーカー表示設定 -->
+                <div id="markerDisplayControl" class="marker-display-control">
+                    <label for="inputMarkerDisplayMode">マーカー表示:</label>
+                    <select id="inputMarkerDisplayMode">
+                        <option value="full">全て表示 (時間・天気・風)</option>
+                        <option value="weatherWind">天気・風向・風速</option>
+                        <option value="windOnly">風向・風速</option>
+                        <option value="arrowOnly">風向の矢印のみ</option>
+                        <option value="none">なし</option>
+                    </select>
+                </div>
+
+                <!-- 勾配色の凡例 -->
+                <div class="route-legend">
+                    <div><span class="legend-extreme-climb"></span>激坂上り (10%以上)</div>
+                    <div><span class="legend-steep-climb"></span>急な上り (5〜9%)</div>
+                    <div><span class="legend-climb"></span>上り (2〜4%)</div>
+                    <div><span class="legend-flat"></span>平坦 (-1〜1%)</div>
+                    <div><span class="legend-descend"></span>下り (-2〜-4%)</div>
+                    <div><span class="legend-steep-descend"></span>急な下り (-5〜-9%)</div>
+                    <div><span class="legend-extreme-descend"></span>激坂下り (-10%以下)</div>
+                    <div><span class="legend-heading-arrow">→</span>進行方向</div>
+                </div>
             </div>
-        </div>
-        
-        <!-- 天気データリストを表示するためのコンテナ -->
-        <div id="weatherListContainer">
-            <div class="weather-table-wrapper">
-                <table class="weather-table">
-                    <tbody>
-                        <tr id="row-point"><th>地点</th></tr>
-                        <tr id="row-distance"><th>距離<br><span style="font-size: 0.7rem; font-weight: normal; opacity: 0.8;">(平均勾配)</span></th></tr>
-                        <tr id="row-date"><th>日付</th></tr>
-                        <tr id="row-time"><th>時</th></tr>
-                        <tr id="row-weather"><th>天気</th></tr>
-                        <tr id="row-precip"><th>降水</th></tr>
-                        <tr id="row-temp"><th>気温</th></tr>
-                        <tr id="row-wind"><th>風</th></tr>
-                        <tr id="row-heading"><th>進行方向</th></tr>
-                    </tbody>
-                </table>
+            
+            <!-- 天気データリストを表示するためのコンテナ -->
+            <div id="weatherListContainer">
+                <div class="weather-table-wrapper">
+                    <table class="weather-table">
+                        <tbody>
+                            <tr id="row-point"><th>地点</th></tr>
+                            <tr id="row-distance"><th>距離<br><span style="font-size: 0.7rem; font-weight: normal; opacity: 0.8;">(平均勾配)</span></th></tr>
+                            <tr id="row-date"><th>日付</th></tr>
+                            <tr id="row-time"><th>時</th></tr>
+                            <tr id="row-weather"><th>天気</th></tr>
+                            <tr id="row-precip"><th>降水</th></tr>
+                            <tr id="row-temp"><th>気温</th></tr>
+                            <tr id="row-wind"><th>風</th></tr>
+                            <tr id="row-heading"><th>進行方向</th></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
-        </div>
+        </main>
     </div>
 
     <!-- フッターエリア -->
     <footer>
         <p>&copy; 2026 GPXルート天候マップ</p>
         <p>
-            <a href="terms.html" target="_blank" rel="noopener noreferrer">利用規約・免責事項</a> | 
-            <a href="privacy.html" target="_blank" rel="noopener noreferrer">プライバシーポリシー</a>
+            <a href="#" id="linkTerms">利用規約・免責事項</a> | 
+            <a href="#" id="linkPrivacy">プライバシーポリシー</a>
         </p>
     </footer>
+
+    <!-- モーダルウィンドウ（利用規約・プライバシーポリシー用） -->
+    <div id="documentModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <span class="modal-close" id="modalCloseBtn">&times;</span>
+            <div id="modalBody" class="document-container">
+                <!-- コンテンツが動的に挿入される -->
+            </div>
+        </div>
+    </div>
+
+    <!-- モーダル用テンプレート：利用規約 -->
+    <template id="templateTerms">
+        <h1>利用規約・免責事項</h1>
+        <p>GPXルート天候マップ（以下「当サイト」）をご利用いただきありがとうございます。当サイトを利用される方は、以下の利用規約および免責事項に同意したものとみなされます。必ずご一読のうえ、安全にご利用ください。</p>
+        <h2>1. 免責事項（安全に関する重要な警告）</h2>
+        <ul>
+            <li>当サイトが提供する天候予報、ルートの勾配計算、到着予想時間などの各種データは、アルゴリズムによるシミュレーション（予測・目安）であり、<strong>正確性、完全性、最新性を保証するものではありません。</strong></li>
+            <li>山岳地帯などアウトドア環境では、局地的な天候の急変が発生しやすく、実際の天候や風向・風速は当サイトの表示と大きく異なる場合があります。</li>
+            <li>当サイトの情報を過信・鵜呑みにして登山、サイクリング、ハイキング等の計画を立てたり、実行したりしないでください。必ず、気象庁や公的な気象情報、現地の状況、自身の体力・装備を総合的に判断してください。</li>
+            <li><strong>当サイトの利用により生じた遭難、事故、怪我、道迷い、損害、トラブル等について、当サイトの開発者および運営者は一切の責任を負いません。すべて自己責任において利用してください。</strong></li>
+        </ul>
+        <h2>2. 外部サービスの利用について</h2>
+        <p>当サイトは以下の外部サービス・APIを利用して情報を提供しています。当サイトの利用にあたっては、各外部サービスの利用規約にも準拠する必要があります。</p>
+        <ul>
+            <li><strong>OpenStreetMap (OSM):</strong> 背景地図のタイルデータとして利用しています。地図データの著作権はOpenStreetMapの貢献者に帰属します。</li>
+            <li><strong>Open-Meteo:</strong> 地点別の天候予測データを取得するために利用しています（非商用利用としてAPIを活用）。</li>
+            <li><strong>Leaflet.js:</strong> 地図描画のためのオープンソースJavaScriptライブラリです。</li>
+        </ul>
+        <h2>3. サービスの変更・停止</h2>
+        <p>当サイトは、システムの保守、外部APIの仕様変更・制限・障害、その他運営上の理由により、事前の予告なくサービスの提供を一時停止、または終了・変更する場合があります。これによってユーザーに生じた損害についても、当サイトは責任を負いかねます。</p>
+        <h2>4. 禁止事項</h2>
+        <p>ユーザーは、当サイトの利用にあたり以下の行為を行ってはなりません。</p>
+        <ul>
+            <li>自動化されたスクリプト、ボット、クローラー等を用いて当サイトや背後のAPIに過度な負荷をかける行為（短時間での大量アクセスなど）。</li>
+            <li>当サイトのシステム、セキュリティを妨害・破壊する行為。</li>
+            <li>その他、法令または公序良俗に違反する行為。</li>
+        </ul>
+        <h2>5. 規約の改定</h2>
+        <p>当サイトは、必要に応じて本利用規約および免責事項を改定することがあります。改定後の規約は当サイトに掲示された時点で効力を発するものとします。</p>
+        <p style="text-align: right; margin-top: 30px;">制定日: 2026年9月21日</p>
+    </template>
+
+    <!-- モーダル用テンプレート：プライバシーポリシー -->
+    <template id="templatePrivacy">
+        <h1>プライバシーポリシー</h1>
+        <p>GPXルート天候マップ（以下「当サイト」）では、ユーザーの皆様のプライバシー保護を最重要視しています。当サイトにおける個人情報・位置情報等の取り扱いについて、以下の通りプライバシーポリシーを定めます。</p>
+        <h2>1. GPXデータの取り扱いについて</h2>
+        <p>ユーザーが読み込ませたGPXファイル（ルートデータ、過去の移動履歴、標高データ等）は、<strong>すべてユーザーのブラウザ（ローカル環境）内でのみ処理</strong>されます。当サイトの運営者が管理するサーバー等へこれらのファイルやルート情報が送信・保存されることは一切ありません。</p>
+        <h2>2. 現在地の位置情報（GPS情報）について</h2>
+        <p>「現在地ナビモード」を利用する際、当サイトはブラウザの機能を用いてユーザーの現在地を取得します。この位置情報についても同様に、当サイトのサーバーには送信・保存されません。ただし、ルート上の最寄り地点の天候を取得するため、後述の外部API（Open-Meteo）に緯度・経度の座標データとして送信されます。</p>
+        <h2>3. 外部APIへのデータ送信について</h2>
+        <p>当サイトは、ルート上の天候情報を取得するために、外部サービスである <strong>Open-Meteo API</strong> を利用しています。天候データを取得する際、ルート上の指定された地点（または現在地）の「緯度・経度」のみが Open-Meteo 社のサーバーに送信されます。<br>
+        Open-Meteo社によるデータの取り扱いについては、同社のプライバシーポリシーに準拠します。<br>
+        参照: <a href="https://open-meteo.com/en/terms" target="_blank" rel="noopener noreferrer">Open-Meteo Terms and Privacy Policy</a></p>
+        <h2>4. ローカルストレージの使用について</h2>
+        <p>当サイトでは、ユーザーが入力した各種設定（テーマ、動作モード、マーカーの表示設定など）を保存し、次回訪問時に復元するために、ブラウザの「ローカルストレージ（localStorage）」を使用しています。これらの情報はユーザーの端末内にのみ保存され、外部に送信されることはありません。ブラウザの設定からキャッシュやデータをクリアすることで、いつでも削除可能です。</p>
+        <h2>5. アクセス解析について</h2>
+        <p>当サイトでは、サービスの向上や利用状況の把握のためにアクセス解析ツールを使用する場合があります。これにより収集されるデータは匿名化されており、個人を特定するものではありません。</p>
+        <h2>6. 本ポリシーの変更</h2>
+        <p>当サイトは、法令の変更やサービスの仕様変更に伴い、事前の予告なく本プライバシーポリシーを改定することがあります。改定後のプライバシーポリシーは、当サイトに掲載された時点で効力を生じるものとします。</p>
+        <p style="text-align: right; margin-top: 30px;">制定日: 2026年9月21日</p>
+    </template>
 
     <!-- LeafletのJavaScriptを読み込む -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
