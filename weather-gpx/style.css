@@ -712,10 +712,18 @@ footer a:hover {
     /* スマホ画面では2カラムを解除し縦積みにする */
     .app-layout {
         flex-direction: column;
+        align-items: stretch;
     }
     .sidebar {
         flex: none;
         width: 100%;
+        box-sizing: border-box;
+    }
+
+    .main-area {
+        flex: none;
+        width: 100%;
+        box-sizing: border-box;
     }
 
     #map {
