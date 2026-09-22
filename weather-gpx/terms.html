@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>利用規約・免責事項 - GPXルート天候マップ</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- ユーザーのテーマ設定（ダークモード）の反映とトグルスイッチ処理スクリプト -->
+    <script>
+        const constSettingsStorageKey = 'gpxWeatherAppSettings';
+        
+        function ApplyThemeMode(isDark) {
+            if (isDark) {
+                document.body.classList.add('dark-mode');
+            } else {
+                document.body.classList.remove('dark-mode');
+            }
+        }
+
+        let initialIsDark = false;
+        const savedData = localStorage.getItem(constSettingsStorageKey);
+        if (savedData !== null) {
+            const settings = JSON.parse(savedData);
+            initialIsDark = settings.themeMode === 'dark';
+            ApplyThemeMode(initialIsDark);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const toggleCb = document.getElementById('themeToggleCb');
+            if (toggleCb) {
+                toggleCb.checked = initialIsDark;
+                toggleCb.addEventListener('change', (e) => {
+                    const isDark = e.target.checked;
+                    ApplyThemeMode(isDark);
+                    
+                    let currentSettings = {};
+                    const currentData = localStorage.getItem(constSettingsStorageKey);
+                    if (currentData !== null) {
+                        currentSettings = JSON.parse(currentData);
+                    }
+                    currentSettings.themeMode = isDark ? 'dark' : 'light';
+                    localStorage.setItem(constSettingsStorageKey, JSON.stringify(currentSettings));
+                });
+            }
+        });
+    </script>
+
+    <header class="app-header">
+        <h1>GPXルート天候マップ</h1>
+        <div class="theme-toggle">
+            <span class="theme-icon">☀️</span>
+            <label class="toggle-switch">
+                <input type="checkbox" id="themeToggleCb">
+                <span class="toggle-slider"></span>
+            </label>
+            <span class="theme-icon">🌙</span>
+        </div>
+    </header>
+
+    <div class="document-container">
+        <h1>利用規約・免責事項</h1>
+        <p>GPXルート天候マップ（以下「当サイト」）をご利用いただきありがとうございます。当サイトを利用される方は、以下の利用規約および免責事項に同意したものとみなされます。必ずご一読のうえ、安全にご利用ください。</p>
+
+        <h2>1. 免責事項（安全に関する重要な警告）</h2>
+        <ul>
+            <li>当サイトが提供する天候予報、ルートの勾配計算、到着予想時間などの各種データは、アルゴリズムによるシミュレーション（予測・目安）であり、<strong>正確性、完全性、最新性を保証するものではありません。</strong></li>
+            <li>山岳地帯などアウトドア環境では、局地的な天候の急変が発生しやすく、実際の天候や風向・風速は当サイトの表示と大きく異なる場合があります。</li>
+            <li>当サイトの情報を過信・鵜呑みにして登山、サイクリング、ハイキング等の計画を立てたり、実行したりしないでください。必ず、気象庁や公的な気象情報、現地の状況、自身の体力・装備を総合的に判断してください。</li>
+            <li><strong>当サイトの利用により生じた遭難、事故、怪我、道迷い、損害、トラブル等について、当サイトの開発者および運営者は一切の責任を負いません。すべて自己責任において利用してください。</strong></li>
+        </ul>
+
+        <h2>2. 外部サービスの利用について</h2>
+        <p>当サイトは以下の外部サービス・APIを利用して情報を提供しています。当サイトの利用にあたっては、各外部サービスの利用規約にも準拠する必要があります。</p>
+        <ul>
+            <li><strong>OpenStreetMap (OSM):</strong> 背景地図のタイルデータとして利用しています。地図データの著作権はOpenStreetMapの貢献者に帰属します。</li>
+            <li><strong>Open-Meteo:</strong> 地点別の天候予測データを取得するために利用しています（非商用利用としてAPIを活用）。</li>
+            <li><strong>Leaflet.js:</strong> 地図描画のためのオープンソースJavaScriptライブラリです。</li>
+        </ul>
+
+        <h2>3. サービスの変更・停止</h2>
+        <p>当サイトは、システムの保守、外部APIの仕様変更・制限・障害、その他運営上の理由により、事前の予告なくサービスの提供を一時停止、または終了・変更する場合があります。これによってユーザーに生じた損害についても、当サイトは責任を負いかねます。</p>
+
+        <h2>4. 禁止事項</h2>
+        <p>ユーザーは、当サイトの利用にあたり以下の行為を行ってはなりません。</p>
+        <ul>
+            <li>自動化されたスクリプト、ボット、クローラー等を用いて当サイトや背後のAPIに過度な負荷をかける行為（短時間での大量アクセスなど）。</li>
+            <li>当サイトのシステム、セキュリティを妨害・破壊する行為。</li>
+            <li>その他、法令または公序良俗に違反する行為。</li>
+        </ul>
+
+        <h2>5. 規約の改定</h2>
+        <p>当サイトは、必要に応じて本利用規約および免責事項を改定することがあります。改定後の規約は当サイトに掲示された時点で効力を発するものとします。</p>
+
+        <p style="text-align: right; margin-top: 30px;">制定日: 2026年9月21日</p>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 GPXルート天候マップ</p>
+        <p>
+            <a href="index.html">アプリに戻る</a> | 
+            <a href="privacy.html">プライバシーポリシー</a>
+        </p>
+    </footer>
+</body>
+</html>
