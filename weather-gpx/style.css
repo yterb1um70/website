@@ -22,6 +22,7 @@
     --footer-text: #666666;
     --highlight-bg: rgba(0, 0, 0, 0.04);
     --modal-overlay-bg: rgba(0, 0, 0, 0.5);
+    --table-highlight-bg: rgba(51, 136, 255, 0.25);
 
     /* 地図と区別しやすいルート用の高コントラストカラー (7段階) */
     --route-extreme-climb: #c0392b; /* 濃い赤 */
@@ -60,6 +61,7 @@
     --footer-text: #aaaaaa;
     --highlight-bg: rgba(255, 255, 255, 0.05);
     --modal-overlay-bg: rgba(0, 0, 0, 0.7);
+    --table-highlight-bg: rgba(85, 170, 255, 0.35);
 
     /* ダークマップ上で映えるネオンカラー系のパレット (7段階) */
     --route-extreme-climb: #ff3333;
@@ -270,24 +272,93 @@ input:checked + .toggle-slider:before {
     font-size: 0.8rem;
 }
 
-/* 右側：メインコンテンツ（地図とリスト） */
+/* 右側：メインコンテンツ（GridStackエリア） */
 .main-area {
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 20px;
     min-width: 0; /* Flexbox内のあふれ防止 */
 }
 
-/* 地図の高さを指定 */
-#map {
-    position: relative;
-    height: 600px;
-    width: 100%;
+/* GridStackのコンテナ上部の余白を相殺して左サイドバーと上端を揃える */
+.grid-stack {
+    margin-top: -5px; /* GridStackのmargin値と同期 */
+}
+
+/* =======================================================
+   ウィジェットコンテナ（GridStack用）
+   ======================================================= */
+.grid-stack-item-content {
+    background-color: transparent !important;
+    padding: 0 !important;
+    display: flex;
+}
+
+.widget-panel {
+    flex: 1;
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
     border-radius: 8px;
     box-shadow: 0 2px 4px var(--panel-shadow);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    min-width: 0;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+.widget-header {
+    background: var(--table-header-bg);
+    padding: 8px 15px;
+    font-weight: bold;
+    font-size: 1rem;
+    color: var(--text-color);
+    border-bottom: 1px solid var(--panel-border);
+    cursor: grab;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.widget-header:active {
+    cursor: grabbing;
+}
+
+.widget-body {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    min-height: 0; /* Flexbox text overflow fix */
+}
+
+/* 各種ウィジェット内部の高さ・余白調整 */
+#map {
+    position: relative;
+    height: 100%;
+    width: 100%;
     background-color: #e5e3df; /* Leafletのデフォルト背景に近い色 */
     z-index: 1;
+}
+
+/* 天気リストコンテナのスタイル（パディングを0にし、テーブルを拡大縮小追従させる） */
+#weatherListContainer {
+    height: 100%;
+    width: 100%;
+    padding: 0;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+}
+
+.chart-container {
+    height: 100%;
+    width: 100%;
+    padding: 15px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
 }
 
 /* 地図内右上のマーカー表示設定コントロール */
@@ -389,29 +460,20 @@ path.route-extreme-descend { stroke: var(--route-extreme-descend) !important; }
     border-radius: 2px;
 }
 
-/* 天気リストコンテナのスタイル */
-#weatherListContainer {
-    width: 100%;
-    background: var(--panel-bg);
-    padding: 15px;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px var(--panel-shadow);
-    box-sizing: border-box;
-}
-
-/* タイムライン表のラッパー（横スクロール対応） */
+/* タイムライン表のラッパー（コンテナサイズに追従し、スクロールを担う） */
 .weather-table-wrapper {
     width: 100%;
-    overflow-x: auto;
-    border: 1px solid var(--panel-border);
-    border-radius: 4px;
+    flex: 1;
+    overflow: auto;
     background-color: var(--panel-bg);
 }
 
-/* タイムライン表のスタイル */
+/* タイムライン表のスタイル（縦横にストレッチして拡大縮小する） */
 .weather-table {
     border-collapse: collapse;
-    width: max-content;
+    width: 100%;
+    height: 100%;
+    min-width: max-content;
     text-align: center;
     font-size: 0.95rem;
 }
@@ -421,6 +483,7 @@ path.route-extreme-descend { stroke: var(--route-extreme-descend) !important; }
     padding: 10px 15px;
     white-space: nowrap;
     color: var(--text-color);
+    transition: background-color 0.2s;
 }
 
 .weather-table th {
@@ -442,6 +505,11 @@ path.route-extreme-descend { stroke: var(--route-extreme-descend) !important; }
     background-color: var(--table-row-weather-bg);
 }
 
+/* グラフホバー時のハイライト列用スタイル */
+.weather-table td.highlight-col {
+    background-color: var(--table-highlight-bg) !important;
+}
+
 /* 降水確率テキストのスタイル */
 .precip-probability-text {
     font-size: 0.75rem;
@@ -455,6 +523,43 @@ path.route-extreme-descend { stroke: var(--route-extreme-descend) !important; }
     font-size: 0.75rem;
     opacity: 0.7;
     margin-left: 2px;
+}
+
+/* グラフのカスタム凡例スタイル */
+.chart-custom-legend {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    font-size: 0.85rem;
+    color: var(--text-color);
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+
+.chart-custom-legend .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.chart-custom-legend .legend-color {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+}
+
+.chart-custom-legend .legend-icon {
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+/* グラフキャンバスのラッパースタイル */
+.canvas-wrapper {
+    position: relative;
+    flex: 1;
+    width: 100%;
+    min-height: 0;
 }
 
 /* クリック可能な地点セルのスタイル */
@@ -720,10 +825,53 @@ footer a:hover {
         box-sizing: border-box;
     }
 
+    /* GridStackをモバイル用の固定・順序指定フローにリセット */
+    .grid-stack {
+        margin-top: 0; 
+        height: auto !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 15px;
+    }
+
+    .grid-stack-item {
+        position: relative !important;
+        top: auto !important;
+        left: auto !important;
+        transform: none !important;
+        width: 100% !important;
+        height: auto !important;
+        min-height: 0 !important;
+    }
+
+    .grid-stack-item-content {
+        position: relative !important;
+        inset: auto !important;
+        height: auto !important;
+        min-height: 0 !important;
+        display: block !important;
+    }
+
+    /* モバイル時：ウィジェット移動無効化 */
+    .widget-header.drag-handle {
+        cursor: default !important;
+        touch-action: auto !important;
+    }
+
     .main-area {
         flex: none;
         width: 100%;
         box-sizing: border-box;
+    }
+
+    /* モバイル時：ウィジェットデザインのリセット */
+    .widget-panel {
+        height: auto;
+    }
+
+    .widget-body {
+        height: auto;
+        overflow: visible;
     }
 
     #map {
@@ -739,6 +887,10 @@ footer a:hover {
         min-width: 0;
         height: auto;
         flex: none;
+    }
+
+    .chart-container {
+        height: 350px;
     }
 
     .route-legend {

@@ -6,9 +6,13 @@
     <title>ルート天候表示アプリ</title>
     <!-- LeafletのCSSを読み込む -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- GridStackのCSSを読み込む -->
+    <link href="https://cdn.jsdelivr.net/npm/gridstack@10.0.1/dist/gridstack.min.css" rel="stylesheet"/>
     <link rel="stylesheet" href="style.css">
     <!-- FITファイルをブラウザでパースするためのライブラリ -->
     <script src="https://cdn.jsdelivr.net/npm/fit-file-parser@1.9.0/dist/fit-parser.js"></script>
+    <!-- KMZを展開するためのJSZipライブラリ -->
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 </head>
 <body>
     <header class="app-header">
@@ -35,9 +39,9 @@
             
             <!-- ルート読み込みグループ -->
             <section class="settings-group">
-                <h3>GPXルート読み込み</h3>
+                <h3>ルート読み込み</h3>
                 <div class="control-group">
-                    <input type="file" id="gpxFileInput" accept=".gpx">
+                    <input type="file" id="routeFileInput" accept=".gpx, .fit, .kml, .kmz">
                 </div>
             </section>
 
@@ -85,8 +89,8 @@
                 <!-- 過去ログ設定（7段階） -->
                 <div id="groupAutoSpeed" class="speed-input-group" style="display: none;">
                     <div class="control-group log-file-container">
-                        <label for="logFileInput">自動算出用ログ(.fit / .gpx)を選択:</label>
-                        <input type="file" id="logFileInput" accept=".fit, .gpx" multiple>
+                        <label for="logFileInput">自動算出用ログを選択:</label>
+                        <input type="file" id="logFileInput" accept=".gpx, .fit, .kml, .kmz" multiple>
                         <small class="helper-text">※選択すると自動で計算されます</small>
                     </div>
 
@@ -150,52 +154,91 @@
 
         </aside>
         
-        <!-- 右側：地図とリストメインエリア -->
+        <!-- 右側：メインコンテンツ（GridStackエリア） -->
         <main class="main-area">
-            <!-- 地図を表示するためのコンテナ -->
-            <div id="map">
-                <!-- 地図内右上のマーカー表示設定 -->
-                <div id="markerDisplayControl" class="marker-display-control">
-                    <label for="inputMarkerDisplayMode">マーカー表示:</label>
-                    <select id="inputMarkerDisplayMode">
-                        <option value="full">全て表示 (時間・天気・風)</option>
-                        <option value="weatherWind">天気・風向・風速</option>
-                        <option value="windOnly">風向・風速</option>
-                        <option value="arrowOnly">風向の矢印のみ</option>
-                        <option value="none">なし</option>
-                    </select>
+            <div class="grid-stack">
+                
+                <!-- 地図ウィジェット -->
+                <div class="grid-stack-item" gs-x="0" gs-y="0" gs-w="12" gs-h="6" gs-id="mapWidget">
+                    <div class="grid-stack-item-content">
+                        <div class="widget-panel">
+                            <div class="widget-header drag-handle">🗺️ 地図</div>
+                            <div class="widget-body">
+                                <div id="map">
+                                    <!-- 地図内右上のマーカー表示設定 -->
+                                    <div id="markerDisplayControl" class="marker-display-control">
+                                        <label for="inputMarkerDisplayMode">マーカー表示:</label>
+                                        <select id="inputMarkerDisplayMode">
+                                            <option value="full">全て表示 (時間・天気・風)</option>
+                                            <option value="weatherWind">天気・風向・風速</option>
+                                            <option value="windOnly">風向・風速</option>
+                                            <option value="arrowOnly">風向の矢印のみ</option>
+                                            <option value="none">なし</option>
+                                        </select>
+                                    </div>
+                                    <!-- 勾配色の凡例 -->
+                                    <div class="route-legend">
+                                        <div><span class="legend-extreme-climb"></span>激坂上り (10%以上)</div>
+                                        <div><span class="legend-steep-climb"></span>急な上り (5〜9%)</div>
+                                        <div><span class="legend-climb"></span>上り (2〜4%)</div>
+                                        <div><span class="legend-flat"></span>平坦 (-1〜1%)</div>
+                                        <div><span class="legend-descend"></span>下り (-2〜-4%)</div>
+                                        <div><span class="legend-steep-descend"></span>急な下り (-5〜-9%)</div>
+                                        <div><span class="legend-extreme-descend"></span>激坂下り (-10%以下)</div>
+                                        <div><span class="legend-heading-arrow">→</span>進行方向</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 天気リストウィジェット -->
+                <div class="grid-stack-item" gs-x="0" gs-y="6" gs-w="12" gs-h="4" gs-id="weatherListWidget">
+                    <div class="grid-stack-item-content">
+                        <div class="widget-panel">
+                            <div class="widget-header drag-handle">📋 天気リスト</div>
+                            <div class="widget-body" id="weatherListContainer">
+                                <div class="weather-table-wrapper">
+                                    <table class="weather-table">
+                                        <tbody>
+                                            <tr id="row-point"><th>地点</th></tr>
+                                            <tr id="row-distance"><th>距離<br><span style="font-size: 0.7rem; font-weight: normal; opacity: 0.8;">(平均勾配)</span></th></tr>
+                                            <tr id="row-date"><th>日付</th></tr>
+                                            <tr id="row-time"><th>時</th></tr>
+                                            <tr id="row-weather"><th>天気</th></tr>
+                                            <tr id="row-precip"><th>降水</th></tr>
+                                            <tr id="row-temp"><th>気温</th></tr>
+                                            <tr id="row-wind"><th>風</th></tr>
+                                            <tr id="row-heading"><th>進行方向</th></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- 勾配色の凡例 -->
-                <div class="route-legend">
-                    <div><span class="legend-extreme-climb"></span>激坂上り (10%以上)</div>
-                    <div><span class="legend-steep-climb"></span>急な上り (5〜9%)</div>
-                    <div><span class="legend-climb"></span>上り (2〜4%)</div>
-                    <div><span class="legend-flat"></span>平坦 (-1〜1%)</div>
-                    <div><span class="legend-descend"></span>下り (-2〜-4%)</div>
-                    <div><span class="legend-steep-descend"></span>急な下り (-5〜-9%)</div>
-                    <div><span class="legend-extreme-descend"></span>激坂下り (-10%以下)</div>
-                    <div><span class="legend-heading-arrow">→</span>進行方向</div>
+                <!-- 標高・天気グラフウィジェット -->
+                <div class="grid-stack-item" gs-x="0" gs-y="10" gs-w="12" gs-h="4" gs-id="chartWidget">
+                    <div class="grid-stack-item-content">
+                        <div class="widget-panel">
+                            <div class="widget-header drag-handle">📈 標高・天気グラフ</div>
+                            <div class="widget-body chart-container" id="chartContainer">
+                                <div class="chart-custom-legend">
+                                    <span class="legend-item"><span class="legend-color" style="background-color: #2ecc71;"></span>標高 (m)</span>
+                                    <span class="legend-item">☀️ 天気</span>
+                                    <span class="legend-item"><span class="legend-icon" style="color: #3498db;">→</span>進行方向に対する風向</span>
+                                    <span class="legend-item">風速 (m/s)</span>
+                                </div>
+                                <div class="canvas-wrapper">
+                                    <canvas id="elevationSpeedChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
-            
-            <!-- 天気データリストを表示するためのコンテナ -->
-            <div id="weatherListContainer">
-                <div class="weather-table-wrapper">
-                    <table class="weather-table">
-                        <tbody>
-                            <tr id="row-point"><th>地点</th></tr>
-                            <tr id="row-distance"><th>距離<br><span style="font-size: 0.7rem; font-weight: normal; opacity: 0.8;">(平均勾配)</span></th></tr>
-                            <tr id="row-date"><th>日付</th></tr>
-                            <tr id="row-time"><th>時</th></tr>
-                            <tr id="row-weather"><th>天気</th></tr>
-                            <tr id="row-precip"><th>降水</th></tr>
-                            <tr id="row-temp"><th>気温</th></tr>
-                            <tr id="row-wind"><th>風</th></tr>
-                            <tr id="row-heading"><th>進行方向</th></tr>
-                        </tbody>
-                    </table>
-                </div>
+
             </div>
         </main>
     </div>
@@ -256,7 +299,7 @@
         <h1>プライバシーポリシー</h1>
         <p>GPXルート天候マップ（以下「当サイト」）では、ユーザーの皆様のプライバシー保護を最重要視しています。当サイトにおける個人情報・位置情報等の取り扱いについて、以下の通りプライバシーポリシーを定めます。</p>
         <h2>1. GPXデータの取り扱いについて</h2>
-        <p>ユーザーが読み込ませたGPXファイル（ルートデータ、過去の移動履歴、標高データ等）は、<strong>すべてユーザーのブラウザ（ローカル環境）内でのみ処理</strong>されます。当サイトの運営者が管理するサーバー等へこれらのファイルやルート情報が送信・保存されることは一切ありません。</p>
+        <p>ユーザーが読み込ませた各種ファイル（GPX/FIT/KML/KMZ等）は、<strong>すべてユーザーのブラウザ（ローカル環境）内でのみ処理</strong>されます。当サイトの運営者が管理するサーバー等へこれらのファイルやルート情報が送信・保存されることは一切ありません。</p>
         <h2>2. 現在地の位置情報（GPS情報）について</h2>
         <p>「現在地ナビモード」を利用する際、当サイトはブラウザの機能を用いてユーザーの現在地を取得します。この位置情報についても同様に、当サイトのサーバーには送信・保存されません。ただし、ルート上の最寄り地点の天候を取得するため、後述の外部API（Open-Meteo）に緯度・経度の座標データとして送信されます。</p>
         <h2>3. 外部APIへのデータ送信について</h2>
@@ -272,6 +315,10 @@
         <p style="text-align: right; margin-top: 30px;">制定日: 2026年9月21日</p>
     </template>
 
+    <!-- Chart.jsの読み込み -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- GridStack.jsの読み込み -->
+    <script src="https://cdn.jsdelivr.net/npm/gridstack@10.0.1/dist/gridstack-all.js"></script>
     <!-- LeafletのJavaScriptを読み込む -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="app.js"></script>
