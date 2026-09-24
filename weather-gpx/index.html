@@ -1,3 +1,4 @@
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -177,15 +178,20 @@
                                         </select>
                                     </div>
                                     <!-- 勾配色の凡例 -->
-                                    <div class="route-legend">
-                                        <div><span class="legend-extreme-climb"></span>激坂上り (10%以上)</div>
-                                        <div><span class="legend-steep-climb"></span>急な上り (5〜9%)</div>
-                                        <div><span class="legend-climb"></span>上り (2〜4%)</div>
-                                        <div><span class="legend-flat"></span>平坦 (-1〜1%)</div>
-                                        <div><span class="legend-descend"></span>下り (-2〜-4%)</div>
-                                        <div><span class="legend-steep-descend"></span>急な下り (-5〜-9%)</div>
-                                        <div><span class="legend-extreme-descend"></span>激坂下り (-10%以下)</div>
-                                        <div><span class="legend-heading-arrow">→</span>進行方向</div>
+                                    <div class="route-legend" id="mapLegend">
+                                        <div class="legend-header" id="mapLegendToggle">
+                                            <span>▼ 凡例</span>
+                                        </div>
+                                        <div class="legend-content">
+                                            <div><span class="legend-extreme-climb"></span>激坂上り (10%以上)</div>
+                                            <div><span class="legend-steep-climb"></span>急な上り (5〜9%)</div>
+                                            <div><span class="legend-climb"></span>上り (2〜4%)</div>
+                                            <div><span class="legend-flat"></span>平坦 (-1〜1%)</div>
+                                            <div><span class="legend-descend"></span>下り (-2〜-4%)</div>
+                                            <div><span class="legend-steep-descend"></span>急な下り (-5〜-9%)</div>
+                                            <div><span class="legend-extreme-descend"></span>激坂下り (-10%以下)</div>
+                                            <div><span class="legend-heading-arrow">→</span>進行方向</div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -225,11 +231,16 @@
                         <div class="widget-panel">
                             <div class="widget-header drag-handle">📈 標高・天気グラフ</div>
                             <div class="widget-body chart-container" id="chartContainer">
-                                <div class="chart-custom-legend">
-                                    <span class="legend-item"><span class="legend-color" style="background-color: #2ecc71;"></span>標高 (m)</span>
-                                    <span class="legend-item">☀️ 天気</span>
-                                    <span class="legend-item"><span class="legend-icon" style="color: #3498db;">→</span>進行方向に対する風向</span>
-                                    <span class="legend-item">風速 (m/s)</span>
+                                <div class="chart-custom-legend" id="chartLegend">
+                                    <div class="legend-header" id="chartLegendToggle">
+                                        <span>▼ 凡例</span>
+                                    </div>
+                                    <div class="legend-content">
+                                        <span class="legend-item"><span class="legend-color" style="background-color: var(--route-flat);"></span>標高 (m)</span>
+                                        <span class="legend-item">☀️ 天気</span>
+                                        <span class="legend-item"><span class="legend-icon" style="color: #3498db;">→</span>進行方向に対する風向</span>
+                                        <span class="legend-item">風速 (m/s)</span>
+                                    </div>
                                 </div>
                                 <div class="canvas-wrapper">
                                     <canvas id="elevationSpeedChart"></canvas>

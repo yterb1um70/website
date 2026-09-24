@@ -204,6 +204,8 @@ class APP_MANAGER {
         this.chartInstance = null;
         this.hoverMarker = null;
         this.grid = null;
+        this.lastHoveredPointIndex = -1;
+        this.lastMouseMoveTime = 0;
     }
 
     // 地図の初期化と設定の読み込みを行うメソッド
@@ -583,6 +585,10 @@ class APP_MANAGER {
                             }
                         }
                         
+                        // 直前と同じインデックスなら再処理をスキップ
+                        if (this.lastHoveredPointIndex === closestPointIdx) return;
+                        this.lastHoveredPointIndex = closestPointIdx;
+                        
                         // リストホバー時はグラフのみ●表示
                         this.SyncChartHover(closestPointIdx);
                     }
@@ -594,7 +600,38 @@ class APP_MANAGER {
                 const isOutsideTable = !weatherTable.contains(related);
                 if (isOutsideTable) {
                     lastHoveredCol = -1;
+                    this.lastHoveredPointIndex = -1;
                     this.SyncChartHover(-1);
+                }
+            });
+        }
+
+        // 凡例の折りたたみ機能 (地図)
+        const mapLegendToggle = document.getElementById('mapLegendToggle');
+        if (mapLegendToggle) {
+            mapLegendToggle.addEventListener('click', () => {
+                const legend = document.getElementById('mapLegend');
+                legend.classList.toggle('legend-minimized');
+                const span = mapLegendToggle.querySelector('span');
+                if (legend.classList.contains('legend-minimized')) {
+                    span.textContent = '▶ 凡例';
+                } else {
+                    span.textContent = '▼ 凡例';
+                }
+            });
+        }
+
+        // 凡例の折りたたみ機能 (グラフ)
+        const chartLegendToggle = document.getElementById('chartLegendToggle');
+        if (chartLegendToggle) {
+            chartLegendToggle.addEventListener('click', () => {
+                const legend = document.getElementById('chartLegend');
+                legend.classList.toggle('legend-minimized');
+                const span = chartLegendToggle.querySelector('span');
+                if (legend.classList.contains('legend-minimized')) {
+                    span.textContent = '▶ 凡例';
+                } else {
+                    span.textContent = '▼ 凡例';
                 }
             });
         }
@@ -714,6 +751,7 @@ class APP_MANAGER {
         }
 
         this.weatherDataCache = [];
+        this.lastHoveredPointIndex = -1;
 
         if (this.chartInstance) {
             this.chartInstance.destroy();
@@ -869,6 +907,35 @@ class APP_MANAGER {
             }
         };
 
+        const gradientSpanElement = document.getElementById('inputGradientSpan');
+        const gradientSpan = gradientSpanElement !== null ? parseInt(gradientSpanElement.value, 10) : 10;
+        const compStyle = getComputedStyle(document.body);
+
+        // グラフの各セグメントに対応する色を算出して配列化する
+        const segmentColors = points.map((_, i) => {
+            const isLastPoint = i >= points.length - 1;
+            if (isLastPoint) {
+                return compStyle.getPropertyValue('--route-flat').trim();
+            }
+            const gradient = CalculateSmoothedGradient(points, i, gradientSpan);
+            const isExtremeClimb = gradient >= 10;
+            const isSteepClimb = gradient >= 5;
+            const isClimb = gradient >= 2;
+            const isExtremeDescend = gradient <= -10;
+            const isSteepDescend = gradient <= -5;
+            const isDescend = gradient <= -2;
+            
+            if (isExtremeClimb) return compStyle.getPropertyValue('--route-extreme-climb').trim();
+            if (isSteepClimb) return compStyle.getPropertyValue('--route-steep-climb').trim();
+            if (isClimb) return compStyle.getPropertyValue('--route-climb').trim();
+            if (isExtremeDescend) return compStyle.getPropertyValue('--route-extreme-descend').trim();
+            if (isSteepDescend) return compStyle.getPropertyValue('--route-steep-descend').trim();
+            if (isDescend) return compStyle.getPropertyValue('--route-descend').trim();
+            return compStyle.getPropertyValue('--route-flat').trim();
+        });
+
+        const bgFillColor = isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)';
+
         this.chartInstance = new Chart(canvas, {
             type: 'line',
             data: {
@@ -877,13 +944,18 @@ class APP_MANAGER {
                         label: '標高 (m)',
                         data: eleData,
                         yAxisID: 'y-ele',
-                        borderColor: '#2ecc71',
-                        backgroundColor: 'rgba(46, 204, 113, 0.2)',
+                        backgroundColor: bgFillColor,
                         fill: true,
                         tension: 0.1,
                         pointRadius: 0,
                         pointHoverRadius: 6,
-                        borderWidth: 2
+                        borderWidth: 3,
+                        segment: {
+                            borderColor: ctx => {
+                                const segmentColorStr = segmentColors[ctx.p0DataIndex];
+                                return segmentColorStr !== undefined ? segmentColorStr : compStyle.getPropertyValue('--route-flat').trim();
+                            }
+                        }
                     }
                 ]
             },
@@ -898,6 +970,11 @@ class APP_MANAGER {
                 onHover: (e, activeElements) => {
                     if (activeElements && activeElements.length > 0) {
                         const index = activeElements[0].index;
+                        
+                        // 直前と同じインデックスなら再処理をスキップ
+                        if (this.lastHoveredPointIndex === index) return;
+                        this.lastHoveredPointIndex = index;
+
                         const point = points[index];
                         
                         // マップ上の連携マーカー表示
@@ -932,6 +1009,9 @@ class APP_MANAGER {
                             this.HighlightTableColumn(closestIdx);
                         }
                     } else {
+                        if (this.lastHoveredPointIndex === -1) return;
+                        this.lastHoveredPointIndex = -1;
+
                         if (this.hoverMarker) {
                             this.mapInstance.removeLayer(this.hoverMarker);
                             this.hoverMarker = null;
@@ -980,6 +1060,7 @@ class APP_MANAGER {
 
         // グラフ領域から外れたらマーカーとハイライトを消去する
         canvas.addEventListener('mouseout', () => {
+            this.lastHoveredPointIndex = -1;
             if (this.hoverMarker) {
                 this.mapInstance.removeLayer(this.hoverMarker);
                 this.hoverMarker = null;
@@ -1056,7 +1137,16 @@ class APP_MANAGER {
         this.routeLayer.on('mousemove', (e) => {
             if (!this.currentRoutePoints || this.currentRoutePoints.length === 0) return;
             
+            const now = Date.now();
+            if (now - this.lastMouseMoveTime < 50) return; // 50ミリ秒ごとに間引きして負荷を抑える
+            this.lastMouseMoveTime = now;
+            
             const closestPointIdx = FindNearestPointIndex(e.latlng.lat, e.latlng.lng, this.currentRoutePoints);
+            
+            // 直前と同じインデックスなら再処理をスキップ
+            if (this.lastHoveredPointIndex === closestPointIdx) return;
+            this.lastHoveredPointIndex = closestPointIdx;
+
             const point = this.currentRoutePoints[closestPointIdx];
 
             // 1. 地図上のマーカーを更新
@@ -1094,6 +1184,7 @@ class APP_MANAGER {
         });
 
         this.routeLayer.on('mouseout', () => {
+            this.lastHoveredPointIndex = -1;
             if (this.hoverMarker) {
                 this.mapInstance.removeLayer(this.hoverMarker);
                 this.hoverMarker = null;
