@@ -205,7 +205,7 @@ class APP_MANAGER {
         this.hoverMarker = null;
         this.grid = null;
         this.lastHoveredPointIndex = -1;
-        this.lastMouseMoveTime = 0;
+        this.isHoverProcessing = false;
     }
 
     // 地図の初期化と設定の読み込みを行うメソッド
@@ -579,14 +579,16 @@ class APP_MANAGER {
                         let minDiff = Infinity;
                         for (let i = 0; i < this.currentRoutePoints.length; i++) {
                             const diff = Math.abs(this.currentRoutePoints[i].totalDistance - weatherData.totalDistance);
-                            if (diff < minDiff) {
+                            const isCloser = diff < minDiff;
+                            if (isCloser) {
                                 minDiff = diff;
                                 closestPointIdx = i;
                             }
                         }
                         
                         // 直前と同じインデックスなら再処理をスキップ
-                        if (this.lastHoveredPointIndex === closestPointIdx) return;
+                        const isSameIndex = this.lastHoveredPointIndex === closestPointIdx;
+                        if (isSameIndex) return;
                         this.lastHoveredPointIndex = closestPointIdx;
                         
                         // リストホバー時はグラフのみ●表示
@@ -908,7 +910,7 @@ class APP_MANAGER {
         };
 
         const gradientSpanElement = document.getElementById('inputGradientSpan');
-        const gradientSpan = gradientSpanElement !== null ? parseInt(gradientSpanElement.value, 10) : 10;
+        const gradientSpan = gradientSpanElement !== null ? parseInt(gradientSpanElement.value, 10) : 100;
         const compStyle = getComputedStyle(document.body);
 
         // グラフの各セグメントに対応する色を算出して配列化する
@@ -968,11 +970,13 @@ class APP_MANAGER {
                     intersect: false,
                 },
                 onHover: (e, activeElements) => {
-                    if (activeElements && activeElements.length > 0) {
+                    const hasActiveElements = activeElements && activeElements.length > 0;
+                    if (hasActiveElements) {
                         const index = activeElements[0].index;
                         
                         // 直前と同じインデックスなら再処理をスキップ
-                        if (this.lastHoveredPointIndex === index) return;
+                        const isSameIndex = this.lastHoveredPointIndex === index;
+                        if (isSameIndex) return;
                         this.lastHoveredPointIndex = index;
 
                         const point = points[index];
@@ -998,7 +1002,8 @@ class APP_MANAGER {
                         let minDiff = Infinity;
                         for (let i = 0; i < weatherData.length; i++) {
                             const diff = Math.abs(weatherData[i].totalDistance - point.totalDistance);
-                            if (diff < minDiff) {
+                            const isCloser = diff < minDiff;
+                            if (isCloser) {
                                 minDiff = diff;
                                 closestIdx = i;
                             }
@@ -1009,10 +1014,12 @@ class APP_MANAGER {
                             this.HighlightTableColumn(closestIdx);
                         }
                     } else {
-                        if (this.lastHoveredPointIndex === -1) return;
+                        const hasNoPreviousHover = this.lastHoveredPointIndex === -1;
+                        if (hasNoPreviousHover) return;
                         this.lastHoveredPointIndex = -1;
 
-                        if (this.hoverMarker) {
+                        const hoverMarkerExists = this.hoverMarker !== null;
+                        if (hoverMarkerExists) {
                             this.mapInstance.removeLayer(this.hoverMarker);
                             this.hoverMarker = null;
                         }
@@ -1061,7 +1068,8 @@ class APP_MANAGER {
         // グラフ領域から外れたらマーカーとハイライトを消去する
         canvas.addEventListener('mouseout', () => {
             this.lastHoveredPointIndex = -1;
-            if (this.hoverMarker) {
+            const hoverMarkerExists = this.hoverMarker !== null;
+            if (hoverMarkerExists) {
                 this.mapInstance.removeLayer(this.hoverMarker);
                 this.hoverMarker = null;
             }
@@ -1135,57 +1143,70 @@ class APP_MANAGER {
         
         // 追加: ルート上のマウスホバー連携処理
         this.routeLayer.on('mousemove', (e) => {
-            if (!this.currentRoutePoints || this.currentRoutePoints.length === 0) return;
+            const currentRoutePointsExists = this.currentRoutePoints && this.currentRoutePoints.length > 0;
+            if (!currentRoutePointsExists) return;
             
-            const now = Date.now();
-            if (now - this.lastMouseMoveTime < 50) return; // 50ミリ秒ごとに間引きして負荷を抑える
-            this.lastMouseMoveTime = now;
+            const isProcessing = this.isHoverProcessing;
+            if (isProcessing) return;
+            this.isHoverProcessing = true;
             
-            const closestPointIdx = FindNearestPointIndex(e.latlng.lat, e.latlng.lng, this.currentRoutePoints);
-            
-            // 直前と同じインデックスなら再処理をスキップ
-            if (this.lastHoveredPointIndex === closestPointIdx) return;
-            this.lastHoveredPointIndex = closestPointIdx;
-
-            const point = this.currentRoutePoints[closestPointIdx];
-
-            // 1. 地図上のマーカーを更新
-            if (this.hoverMarker) {
-                this.hoverMarker.setLatLng([point.lat, point.lng]);
-            } else {
-                this.hoverMarker = L.circleMarker([point.lat, point.lng], {
-                    radius: 8,
-                    fillColor: "#e74c3c",
-                    color: "#ffffff",
-                    weight: 2,
-                    opacity: 1,
-                    fillOpacity: 1,
-                    interactive: false
-                }).addTo(this.mapInstance);
-            }
-            this.hoverMarker.bringToFront();
-
-            // 2. 天気リストの該当列ハイライト処理
-            let closestWeatherIdx = -1;
-            let minDiff = Infinity;
-            for (let i = 0; i < this.weatherDataCache.length; i++) {
-                const diff = Math.abs(this.weatherDataCache[i].totalDistance - point.totalDistance);
-                if (diff < minDiff) {
-                    minDiff = diff;
-                    closestWeatherIdx = i;
+            requestAnimationFrame(() => {
+                const closestPointIdx = FindNearestPointIndex(e.latlng.lat, e.latlng.lng, this.currentRoutePoints);
+                
+                // 直前と同じインデックスなら再処理をスキップ
+                const isSameIndex = this.lastHoveredPointIndex === closestPointIdx;
+                if (isSameIndex) {
+                    this.isHoverProcessing = false;
+                    return;
                 }
-            }
-            if (closestWeatherIdx !== -1) {
-                this.HighlightTableColumn(closestWeatherIdx);
-            }
+                this.lastHoveredPointIndex = closestPointIdx;
 
-            // 3. グラフの●（ツールチップ）を表示
-            this.SyncChartHover(closestPointIdx);
+                const point = this.currentRoutePoints[closestPointIdx];
+
+                // 1. 地図上のマーカーを更新
+                if (this.hoverMarker) {
+                    this.hoverMarker.setLatLng([point.lat, point.lng]);
+                } else {
+                    this.hoverMarker = L.circleMarker([point.lat, point.lng], {
+                        radius: 8,
+                        fillColor: "#e74c3c",
+                        color: "#ffffff",
+                        weight: 2,
+                        opacity: 1,
+                        fillOpacity: 1,
+                        interactive: false
+                    }).addTo(this.mapInstance);
+                }
+                this.hoverMarker.bringToFront();
+
+                // 2. 天気リストの該当列ハイライト処理
+                let closestWeatherIdx = -1;
+                let minDiff = Infinity;
+                for (let i = 0; i < this.weatherDataCache.length; i++) {
+                    const diff = Math.abs(this.weatherDataCache[i].totalDistance - point.totalDistance);
+                    const isCloser = diff < minDiff;
+                    if (isCloser) {
+                        minDiff = diff;
+                        closestWeatherIdx = i;
+                    }
+                }
+                
+                const hasClosestWeather = closestWeatherIdx !== -1;
+                if (hasClosestWeather) {
+                    this.HighlightTableColumn(closestWeatherIdx);
+                }
+
+                // 3. グラフの●（ツールチップ）を表示
+                this.SyncChartHover(closestPointIdx);
+                
+                this.isHoverProcessing = false;
+            });
         });
 
         this.routeLayer.on('mouseout', () => {
             this.lastHoveredPointIndex = -1;
-            if (this.hoverMarker) {
+            const hoverMarkerExists = this.hoverMarker !== null;
+            if (hoverMarkerExists) {
                 this.mapInstance.removeLayer(this.hoverMarker);
                 this.hoverMarker = null;
             }
@@ -1474,15 +1495,21 @@ function GetHeadingString(bearing) {
     return directions[index];
 }
 
-// 指定した緯度経度に最も近いルート上のインデックスを取得する関数
+// 指定した緯度経度に最も近いルート上のインデックスを取得する関数（高速化のため近似計算を使用）
 function FindNearestPointIndex(targetLat, targetLng, points) {
-    let minDistance = Infinity;
+    let minDistanceSq = Infinity;
     let nearestIndex = 0;
+    // 緯度による経度距離の補正値を事前計算
+    const cosLat = Math.cos(targetLat * (Math.PI / 180));
+
     for (let i = 0; i < points.length; i++) {
-        const distance = CalculateDistance(targetLat, targetLng, points[i].lat, points[i].lng);
-        const isCloser = distance < minDistance;
+        const dLat = points[i].lat - targetLat;
+        const dLon = (points[i].lng - targetLng) * cosLat;
+        const distanceSq = dLat * dLat + dLon * dLon;
+        
+        const isCloser = distanceSq < minDistanceSq;
         if (isCloser) {
-            minDistance = distance;
+            minDistanceSq = distanceSq;
             nearestIndex = i;
         }
     }
