@@ -1,4 +1,3 @@
-/* style.css */
 /* CSS変数（カスタムプロパティ）の定義 */
 :root {
     --bg-color: #f5f5f5;
@@ -246,6 +245,35 @@ input:checked + .toggle-slider:before {
     color: var(--text-color);
     width: 100%;
     box-sizing: border-box;
+}
+
+/* 日時入力と現在ボタンのラッパー */
+.datetime-input-wrapper {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.datetime-input-wrapper input[type="datetime-local"] {
+    flex: 1;
+}
+
+.btn-current-time {
+    padding: 6px 12px;
+    border: 1px solid var(--panel-border);
+    border-radius: 4px;
+    background-color: var(--table-header-bg);
+    color: var(--text-color);
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+    white-space: nowrap;
+}
+
+.btn-current-time:hover {
+    background-color: var(--info-box-border);
+    color: #fff;
+    border-color: var(--info-box-border);
 }
 
 /* 速度設定フォームのボタングループ */

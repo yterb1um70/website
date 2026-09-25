@@ -56,7 +56,10 @@
                 </div>
                 <div class="control-group" id="groupStartTime">
                     <label for="inputStartTime">スタート日時:</label>
-                    <input type="datetime-local" id="inputStartTime">
+                    <div class="datetime-input-wrapper">
+                        <button type="button" id="btnSetCurrentTime" class="btn-current-time">現在</button>
+                        <input type="datetime-local" id="inputStartTime">
+                    </div>
                 </div>
             </section>
 

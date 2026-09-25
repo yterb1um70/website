@@ -555,6 +555,18 @@ class APP_MANAGER {
             });
         }
 
+        // 現在時間設定ボタンのイベント設定
+        const btnSetCurrentTime = document.getElementById('btnSetCurrentTime');
+        if (btnSetCurrentTime) {
+            btnSetCurrentTime.addEventListener('click', () => {
+                this.SetCurrentTime();
+                this.SaveSettings();
+                if (this.hasRouteData) {
+                    this.UpdateDisplay();
+                }
+            });
+        }
+
         // 天気リスト上をホバーした際のグラフ連携
         const weatherTable = document.querySelector('.weather-table');
         const hasWeatherTable = weatherTable !== null;
