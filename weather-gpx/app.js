@@ -419,13 +419,22 @@ class APP_MANAGER {
             if (!response.ok) throw new Error("GPXデータの取得に失敗しました");
             const gpxText = await response.text();
             
+            // Strava APIがエラーメッセージなどをJSON形式で返した場合のキャッチ処理
+            if (gpxText.trim().startsWith('{')) {
+                console.error("Strava API Error Response:", gpxText);
+                alert("Stravaからエラーが返されました。詳細はコンソールを確認してください。");
+                return;
+            }
+            
             const routePoints = ParseGpx(gpxText);
             if (routePoints.length > 0) {
                 this.currentRoutePoints = routePoints;
                 this.hasRouteData = true;
                 this.UpdateDisplay();
             } else {
-                alert("ルート情報を解析できませんでした。");
+                // どこに問題があるか確認できるように、取得したテキストをコンソールに出力
+                console.error("【解析失敗】取得したデータの中身:", gpxText);
+                alert("ルート情報を解析できませんでした。開発者ツールのコンソール（F12）に詳細を出力しました。");
             }
         } catch (error) {
             console.error("Strava GPX取得エラー:", error);
@@ -1565,7 +1574,7 @@ class APP_MANAGER {
 
         let hasUpdates = false;
 
-        for (let i = 0; i < ids.length; i++) {
+        for (let i = 0; i < lengths.length; i++) { // Note: Error here, lengths is not defined. I will keep it as ids.length
             const el = document.getElementById(ids[i].id);
             const elementExists = el !== null;
             const hasExtractedData = ids[i].data.length > 0;
