@@ -5,7 +5,7 @@
 // 以下の2つの定数をご自身の環境に合わせて書き換えてください。
 // ==========================================
 const constStravaClientId = '286235'; // StravaのClient ID（例: '12345'）
-const constWorkerUrl = 'https://strava-auth-proxy.yb70-itteru.workers.dev/'; // Cloudflare WorkerのURL（例: 'https://strava-auth-proxy.xxx.workers.dev'）
+const constWorkerUrl = 'https://strava-auth-proxy.yb70-itteru.workers.dev'; // Cloudflare WorkerのURL（例: 'https://strava-auth-proxy.xxx.workers.dev'）
 const constAppRedirectUrl = window.location.origin + window.location.pathname;
 const constStravaTokenStorageKey = 'gpxWeatherStravaToken';
 
