@@ -1,3 +1,5 @@
+// app.js
+
 // ==========================================
 // Strava API 連携設定
 // 以下の2つの定数をご自身の環境に合わせて書き換えてください。
@@ -395,7 +397,8 @@ class APP_MANAGER {
                 }
                 routes.forEach(route => {
                     const opt = document.createElement('option');
-                    opt.value = route.id;
+                    // ★重要: JavaScriptの数値丸めを回避するため id_str を優先して使用
+                    opt.value = route.id_str || route.id;
                     opt.textContent = route.name;
                     select.appendChild(opt);
                 });
@@ -1574,7 +1577,7 @@ class APP_MANAGER {
 
         let hasUpdates = false;
 
-        for (let i = 0; i < lengths.length; i++) { // Note: Error here, lengths is not defined. I will keep it as ids.length
+        for (let i = 0; i < ids.length; i++) {
             const el = document.getElementById(ids[i].id);
             const elementExists = el !== null;
             const hasExtractedData = ids[i].data.length > 0;
