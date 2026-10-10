@@ -4,9 +4,8 @@
 // Strava API 連携設定
 // 以下の2つの定数をご自身の環境に合わせて書き換えてください。
 // ==========================================
-const constStravaClientId = '286235'; // StravaのClient ID（例: '12345'）
-// 末尾にスラッシュが入っていても自動的に除去してエラーを防ぐ処理を追加
-const constWorkerUrl = 'https://strava-auth-proxy.yb70-itteru.workers.dev'.replace(/\/$/, '');
+const constStravaClientId = 'YOUR_STRAVA_CLIENT_ID'; 
+const constWorkerUrl = 'YOUR_WORKER_URL'.replace(/\/$/, '');
 const constAppRedirectUrl = window.location.origin + window.location.pathname;
 const constStravaTokenStorageKey = 'gpxWeatherStravaToken';
 
@@ -322,7 +321,7 @@ class APP_MANAGER {
                 const expiresAt = tokenObj.expires_at * 1000;
                 if (Date.now() < expiresAt && tokenObj.athlete) {
                     this.ToggleStravaUI(true);
-                    this.FetchStravaRoutes(tokenObj.access_token, tokenObj.athlete.id);
+                    this.FetchStravaActivities(tokenObj.access_token);
                 } else {
                     localStorage.removeItem(constStravaTokenStorageKey);
                     this.ToggleStravaUI(false);
@@ -351,7 +350,7 @@ class APP_MANAGER {
 
             localStorage.setItem(constStravaTokenStorageKey, JSON.stringify(data));
             this.ToggleStravaUI(true);
-            this.FetchStravaRoutes(data.access_token, data.athlete.id);
+            this.FetchStravaActivities(data.access_token);
         } catch (error) {
             console.error("Strava認証エラー:", error);
             alert("Stravaの認証に失敗しました。");
@@ -369,79 +368,90 @@ class APP_MANAGER {
         }
     }
 
-    // Stravaからマイルート一覧を取得するメソッド
-    async FetchStravaRoutes(accessToken, athleteId) {
+    // Stravaから過去の走行ログ（アクティビティ）一覧を取得するメソッド
+    async FetchStravaActivities(accessToken) {
         try {
-            if (!athleteId) throw new Error("ユーザーIDが見つかりません");
-
-            const response = await fetch(`${constWorkerUrl}/routes?token=${accessToken}&athleteId=${athleteId}`);
-            if (!response.ok) throw new Error("ルート一覧の取得に失敗しました");
+            const response = await fetch(`${constWorkerUrl}/activities?token=${accessToken}`);
+            if (!response.ok) throw new Error("アクティビティ一覧の取得に失敗しました");
             
-            const routes = await response.json();
+            const activities = await response.json();
             
-            // Strava APIが配列以外（エラーオブジェクトなど）を返した場合のフェイルセーフ
-            if (!Array.isArray(routes)) {
-                console.error("Strava API Response:", routes);
-                throw new Error("ルート一覧の形式が不正です");
+            if (!Array.isArray(activities)) {
+                console.error("Strava API Response Error:", activities);
+                throw new Error("走行ログ一覧の形式が不正です");
             }
 
             const select = document.getElementById('selectStravaRoute');
             if (select) {
                 select.innerHTML = '';
-                if (routes.length === 0) {
+                if (activities.length === 0) {
                     const opt = document.createElement('option');
-                    opt.textContent = "ルートがありません";
+                    opt.textContent = "走行ログがありません";
                     opt.value = "";
                     select.appendChild(opt);
                     return;
                 }
-                routes.forEach(route => {
+                activities.forEach(act => {
                     const opt = document.createElement('option');
-                    // ★重要: JavaScriptの数値丸めを回避するため id_str を優先して使用
-                    opt.value = route.id_str || route.id;
-                    opt.textContent = route.name;
+                    opt.value = act.id;
+                    const date = new Date(act.start_date_local).toLocaleDateString('ja-JP');
+                    opt.textContent = `${date} - ${act.name}`;
                     select.appendChild(opt);
                 });
             }
         } catch (error) {
-            console.error("Stravaルート取得エラー:", error);
-            alert("Stravaからのルート一覧取得に失敗しました。再ログインをお試しください。");
+            console.error("Stravaアクティビティ取得エラー:", error);
+            alert("Stravaからの走行ログ取得に失敗しました。再ログインをお試しください。");
             localStorage.removeItem(constStravaTokenStorageKey);
             this.ToggleStravaUI(false);
         }
     }
 
-    // 選択されたStravaルートのGPXデータを取得して読み込むメソッド
-    async LoadStravaRoute(routeId) {
+    // 選択されたStravaアクティビティのストリームデータを取得してルートとして読み込むメソッド
+    async LoadStravaActivity(activityId) {
         const savedTokenData = localStorage.getItem(constStravaTokenStorageKey);
         if (!savedTokenData) return;
         const tokenObj = JSON.parse(savedTokenData);
 
         try {
-            const response = await fetch(`${constWorkerUrl}/route-gpx/${routeId}?token=${tokenObj.access_token}`);
-            if (!response.ok) throw new Error("GPXデータの取得に失敗しました");
-            const gpxText = await response.text();
+            const response = await fetch(`${constWorkerUrl}/activity-streams/${activityId}?token=${tokenObj.access_token}`);
+            if (!response.ok) throw new Error("ストリームデータの取得に失敗しました");
             
-            // Strava APIがエラーメッセージなどをJSON形式で返した場合のキャッチ処理
-            if (gpxText.trim().startsWith('{')) {
-                console.error("Strava API Error Response:", gpxText);
-                alert("Stravaからエラーが返されました。詳細はコンソールを確認してください。");
+            const streams = await response.json();
+            
+            // エラーまたは位置情報がない場合のチェック
+            if (streams.message || !streams.latlng) {
+                console.error("Strava Streams API Error:", streams);
+                alert("この走行ログには位置情報が含まれていないか、アクセス権がありません。");
                 return;
             }
             
-            const routePoints = ParseGpx(gpxText);
+            const latlngData = streams.latlng.data;
+            const altData = streams.altitude ? streams.altitude.data : [];
+            const routePoints = [];
+
+            for (let i = 0; i < latlngData.length; i++) {
+                routePoints.push({
+                    lat: latlngData[i][0],
+                    lng: latlngData[i][1],
+                    ele: altData[i] || 0,
+                    time: null,
+                    estimatedTime: null,
+                    totalDistance: 0,
+                    calculatedSpeed: 0
+                });
+            }
+
             if (routePoints.length > 0) {
                 this.currentRoutePoints = routePoints;
                 this.hasRouteData = true;
                 this.UpdateDisplay();
             } else {
-                // どこに問題があるか確認できるように、取得したテキストをコンソールに出力
-                console.error("【解析失敗】取得したデータの中身:", gpxText);
-                alert("ルート情報を解析できませんでした。開発者ツールのコンソール（F12）に詳細を出力しました。");
+                alert("ルート情報を解析できませんでした。");
             }
         } catch (error) {
-            console.error("Strava GPX取得エラー:", error);
-            alert("Stravaからのルート読み込みに失敗しました。");
+            console.error("Stravaストリーム取得エラー:", error);
+            alert("Stravaからのデータ読み込みに失敗しました。");
         }
     }
 
@@ -724,7 +734,7 @@ class APP_MANAGER {
         const btnStravaLogin = document.getElementById('btnStravaLogin');
         if (btnStravaLogin) {
             btnStravaLogin.addEventListener('click', () => {
-                if (constStravaClientId === 'YOUR_STRAVA_CLIENT_ID' || constWorkerUrl === 'YOUR_WORKER_URL') {
+                if (constStravaClientId === 'YOUR_STRAVA_CLIENT_ID' || constWorkerUrl === 'YOUR_WORKER_URL' || constWorkerUrl === 'YOUR_WORKER_URL'.replace(/\/$/, '')) {
                     alert("コード内の constStravaClientId と constWorkerUrl を設定してください。");
                     return;
                 }
@@ -734,13 +744,13 @@ class APP_MANAGER {
             });
         }
 
-        // Stravaルート読み込みボタンのイベント設定
+        // Stravaルート（走行ログ）読み込みボタンのイベント設定
         const btnLoadStravaRoute = document.getElementById('btnLoadStravaRoute');
         if (btnLoadStravaRoute) {
             btnLoadStravaRoute.addEventListener('click', () => {
                 const select = document.getElementById('selectStravaRoute');
                 if (select && select.value) {
-                    this.LoadStravaRoute(select.value);
+                    this.LoadStravaActivity(select.value);
                 }
             });
         }
