@@ -5,7 +5,7 @@
 // 以下の2つの定数をご自身の環境に合わせて書き換えてください。
 // ==========================================
 const constStravaClientId = '286235'; 
-const constWorkerUrl = 'YOUR_WORKER_URL'.replace(/\/$/, '');
+const constWorkerUrl = 'https://strava-auth-proxy.yb70-itteru.workers.dev'.replace(/\/$/, '');
 const constAppRedirectUrl = window.location.origin + window.location.pathname;
 const constStravaTokenStorageKey = 'gpxWeatherStravaToken';
 
