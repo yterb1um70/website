@@ -1,10 +1,8 @@
-// app.js
-
 // ==========================================
 // Strava API 連携設定
 // 以下の2つの定数をご自身の環境に合わせて書き換えてください。
 // ==========================================
-const constStravaClientId = 'YOUR_STRAVA_CLIENT_ID'; // StravaのClient ID（例: '12345'）
+const constStravaClientId = '286235'; // StravaのClient ID（例: '12345'）
 // 末尾にスラッシュが入っていても自動的に除去してエラーを防ぐ処理を追加
 const constWorkerUrl = 'https://strava-auth-proxy.yb70-itteru.workers.dev'.replace(/\/$/, '');
 const constAppRedirectUrl = window.location.origin + window.location.pathname;
@@ -320,9 +318,9 @@ class APP_MANAGER {
             if (savedTokenData) {
                 const tokenObj = JSON.parse(savedTokenData);
                 const expiresAt = tokenObj.expires_at * 1000;
-                if (Date.now() < expiresAt) {
+                if (Date.now() < expiresAt && tokenObj.athlete) {
                     this.ToggleStravaUI(true);
-                    this.FetchStravaRoutes(tokenObj.access_token);
+                    this.FetchStravaRoutes(tokenObj.access_token, tokenObj.athlete.id);
                 } else {
                     localStorage.removeItem(constStravaTokenStorageKey);
                     this.ToggleStravaUI(false);
@@ -343,9 +341,15 @@ class APP_MANAGER {
             });
             if (!response.ok) throw new Error("トークンの取得に失敗しました");
             const data = await response.json();
+            
+            // APIエラーレスポンスのチェック
+            if (data.errors) {
+                throw new Error("認証エラー: " + JSON.stringify(data.errors));
+            }
+
             localStorage.setItem(constStravaTokenStorageKey, JSON.stringify(data));
             this.ToggleStravaUI(true);
-            this.FetchStravaRoutes(data.access_token);
+            this.FetchStravaRoutes(data.access_token, data.athlete.id);
         } catch (error) {
             console.error("Strava認証エラー:", error);
             alert("Stravaの認証に失敗しました。");
@@ -364,12 +368,21 @@ class APP_MANAGER {
     }
 
     // Stravaからマイルート一覧を取得するメソッド
-    async FetchStravaRoutes(accessToken) {
+    async FetchStravaRoutes(accessToken, athleteId) {
         try {
-            const response = await fetch(`${constWorkerUrl}/routes?token=${accessToken}`);
+            if (!athleteId) throw new Error("ユーザーIDが見つかりません");
+
+            const response = await fetch(`${constWorkerUrl}/routes?token=${accessToken}&athleteId=${athleteId}`);
             if (!response.ok) throw new Error("ルート一覧の取得に失敗しました");
+            
             const routes = await response.json();
             
+            // Strava APIが配列以外（エラーオブジェクトなど）を返した場合のフェイルセーフ
+            if (!Array.isArray(routes)) {
+                console.error("Strava API Response:", routes);
+                throw new Error("ルート一覧の形式が不正です");
+            }
+
             const select = document.getElementById('selectStravaRoute');
             if (select) {
                 select.innerHTML = '';
