@@ -384,44 +384,43 @@ class APP_MANAGER {
             const activities = await activitiesRes.json();
             const routes = await routesRes.json();
             
-            const select = document.getElementById('selectStravaRoute');
-            if (select) {
-                select.innerHTML = '';
-                
+            const selectAct = document.getElementById('selectStravaActivity');
+            const selectRoute = document.getElementById('selectStravaRoute');
+            
+            if (selectAct) {
+                selectAct.innerHTML = '';
                 const hasActivities = Array.isArray(activities) && activities.length > 0;
-                const hasRoutes = Array.isArray(routes) && routes.length > 0;
-
-                if (!hasActivities && !hasRoutes) {
+                if (!hasActivities) {
                     const opt = document.createElement('option');
-                    opt.textContent = "データがありません";
+                    opt.textContent = "走行ログがありません";
                     opt.value = "";
-                    select.appendChild(opt);
-                    return;
-                }
-
-                if (hasActivities) {
-                    const groupAct = document.createElement('optgroup');
-                    groupAct.label = "過去の走行ログ";
+                    selectAct.appendChild(opt);
+                } else {
                     activities.forEach(act => {
                         const opt = document.createElement('option');
-                        opt.value = `activity_${act.id}`;
+                        opt.value = act.id;
                         const date = new Date(act.start_date_local).toLocaleDateString('ja-JP');
                         opt.textContent = `${date} - ${act.name}`;
-                        groupAct.appendChild(opt);
+                        selectAct.appendChild(opt);
                     });
-                    select.appendChild(groupAct);
                 }
+            }
 
-                if (hasRoutes) {
-                    const groupRoute = document.createElement('optgroup');
-                    groupRoute.label = "保存されたルート";
+            if (selectRoute) {
+                selectRoute.innerHTML = '';
+                const hasRoutes = Array.isArray(routes) && routes.length > 0;
+                if (!hasRoutes) {
+                    const opt = document.createElement('option');
+                    opt.textContent = "ルートがありません";
+                    opt.value = "";
+                    selectRoute.appendChild(opt);
+                } else {
                     routes.forEach(route => {
                         const opt = document.createElement('option');
-                        opt.value = `route_${route.id_str || route.id}`;
+                        opt.value = route.id_str || route.id;
                         opt.textContent = route.name;
-                        groupRoute.appendChild(opt);
+                        selectRoute.appendChild(opt);
                     });
-                    select.appendChild(groupRoute);
                 }
             }
         } catch (error) {
@@ -802,18 +801,24 @@ class APP_MANAGER {
             });
         }
 
-        // Stravaデータ読み込みボタンのイベント設定
+        // Stravaルート（保存されたルート）読み込みボタンのイベント設定
         const btnLoadStravaRoute = document.getElementById('btnLoadStravaRoute');
         if (btnLoadStravaRoute) {
             btnLoadStravaRoute.addEventListener('click', () => {
                 const select = document.getElementById('selectStravaRoute');
                 if (select && select.value) {
-                    const val = select.value;
-                    if (val.startsWith('activity_')) {
-                        this.LoadStravaActivity(val.replace('activity_', ''));
-                    } else if (val.startsWith('route_')) {
-                        this.LoadStravaRoute(val.replace('route_', ''));
-                    }
+                    this.LoadStravaRoute(select.value);
+                }
+            });
+        }
+
+        // Stravaアクティビティ（過去の走行ログ）読み込みボタンのイベント設定
+        const btnLoadStravaActivity = document.getElementById('btnLoadStravaActivity');
+        if (btnLoadStravaActivity) {
+            btnLoadStravaActivity.addEventListener('click', () => {
+                const select = document.getElementById('selectStravaActivity');
+                if (select && select.value) {
+                    this.LoadStravaActivity(select.value);
                 }
             });
         }
