@@ -1,3 +1,5 @@
+/* style.css */
+
 /* CSS変数（カスタムプロパティ）の定義 */
 :root {
     --bg-color: #f5f5f5;
@@ -197,6 +199,40 @@ input:checked + .toggle-slider:before {
     color: var(--text-color);
     border-bottom: 2px solid var(--info-box-border);
     padding-bottom: 5px;
+}
+
+/* Strava連携用ボタンスタイル */
+.btn-strava {
+    background-color: #fc4c02;
+    color: white;
+    border: none;
+    padding: 10px;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    width: 100%;
+    font-size: 1rem;
+}
+.btn-strava:hover {
+    background-color: #e34402;
+}
+
+.btn-primary {
+    background-color: var(--info-box-border);
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+.btn-primary:hover {
+    background-color: #2266cc;
+}
+.dark-mode .btn-primary:hover {
+    background-color: #77bbff;
 }
 
 /* ラジオボタングループのスタイル */

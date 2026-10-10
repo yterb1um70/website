@@ -1,3 +1,4 @@
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -37,9 +38,25 @@
         <!-- 左側：設定サイドバー -->
         <aside class="sidebar">
             
+            <!-- Strava連携グループ -->
+            <section class="settings-group">
+                <h3>Strava連携</h3>
+                <div id="stravaLoginGroup" class="control-group">
+                    <button type="button" id="btnStravaLogin" class="btn-strava">Stravaでログイン</button>
+                    <small class="helper-text">マイルートを直接読み込めます</small>
+                </div>
+                <div id="stravaRouteGroup" class="control-group" style="display: none;">
+                    <label for="selectStravaRoute">マイルートを選択:</label>
+                    <div style="display: flex; gap: 8px;">
+                        <select id="selectStravaRoute" style="flex: 1;"></select>
+                        <button type="button" id="btnLoadStravaRoute" class="btn-primary">読込</button>
+                    </div>
+                </div>
+            </section>
+
             <!-- ルート読み込みグループ -->
             <section class="settings-group">
-                <h3>ルート読み込み</h3>
+                <h3>ファイルからルート読み込み</h3>
                 <div class="control-group">
                     <input type="file" id="routeFileInput" accept=".gpx, .fit, .kml, .kmz">
                 </div>

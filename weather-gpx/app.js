@@ -1,3 +1,14 @@
+// app.js
+
+// ==========================================
+// Strava API 連携設定
+// 以下の2つの定数をご自身の環境に合わせて書き換えてください。
+// ==========================================
+const constStravaClientId = '286235'; // StravaのClient ID（例: '12345'）
+const constWorkerUrl = 'https://strava-auth-proxy.yb70-itteru.workers.dev/'; // Cloudflare WorkerのURL（例: 'https://strava-auth-proxy.xxx.workers.dev'）
+const constAppRedirectUrl = window.location.origin + window.location.pathname;
+const constStravaTokenStorageKey = 'gpxWeatherStravaToken';
+
 // 外部の地図タイルのURL定数
 const constTileUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 // 天気APIのベースURL定数
@@ -290,6 +301,122 @@ class APP_MANAGER {
         this.LoadSettings();
         this.AttachEventListeners();
         this.AttachModalListeners();
+
+        // Strava認証のチェックを追加
+        this.CheckStravaAuth();
+    }
+
+    // Strava認証状態の確認と初期化
+    async CheckStravaAuth() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+
+        if (code) {
+            window.history.replaceState({}, document.title, constAppRedirectUrl);
+            await this.ExchangeStravaToken(code);
+        } else {
+            const savedTokenData = localStorage.getItem(constStravaTokenStorageKey);
+            if (savedTokenData) {
+                const tokenObj = JSON.parse(savedTokenData);
+                const expiresAt = tokenObj.expires_at * 1000;
+                if (Date.now() < expiresAt) {
+                    this.ToggleStravaUI(true);
+                    this.FetchStravaRoutes(tokenObj.access_token);
+                } else {
+                    localStorage.removeItem(constStravaTokenStorageKey);
+                    this.ToggleStravaUI(false);
+                }
+            } else {
+                this.ToggleStravaUI(false);
+            }
+        }
+    }
+
+    // Stravaの認証コードをアクセストークンに交換するメソッド
+    async ExchangeStravaToken(code) {
+        try {
+            const response = await fetch(`${constWorkerUrl}/token`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code: code })
+            });
+            if (!response.ok) throw new Error("トークンの取得に失敗しました");
+            const data = await response.json();
+            localStorage.setItem(constStravaTokenStorageKey, JSON.stringify(data));
+            this.ToggleStravaUI(true);
+            this.FetchStravaRoutes(data.access_token);
+        } catch (error) {
+            console.error("Strava認証エラー:", error);
+            alert("Stravaの認証に失敗しました。");
+            this.ToggleStravaUI(false);
+        }
+    }
+
+    // Strava連携用UIの表示切り替えメソッド
+    ToggleStravaUI(isLoggedIn) {
+        const loginGroup = document.getElementById('stravaLoginGroup');
+        const routeGroup = document.getElementById('stravaRouteGroup');
+        if (loginGroup && routeGroup) {
+            loginGroup.style.display = isLoggedIn ? 'none' : 'block';
+            routeGroup.style.display = isLoggedIn ? 'block' : 'none';
+        }
+    }
+
+    // Stravaからマイルート一覧を取得するメソッド
+    async FetchStravaRoutes(accessToken) {
+        try {
+            const response = await fetch(`${constWorkerUrl}/routes?token=${accessToken}`);
+            if (!response.ok) throw new Error("ルート一覧の取得に失敗しました");
+            const routes = await response.json();
+            
+            const select = document.getElementById('selectStravaRoute');
+            if (select) {
+                select.innerHTML = '';
+                if (routes.length === 0) {
+                    const opt = document.createElement('option');
+                    opt.textContent = "ルートがありません";
+                    opt.value = "";
+                    select.appendChild(opt);
+                    return;
+                }
+                routes.forEach(route => {
+                    const opt = document.createElement('option');
+                    opt.value = route.id;
+                    opt.textContent = route.name;
+                    select.appendChild(opt);
+                });
+            }
+        } catch (error) {
+            console.error("Stravaルート取得エラー:", error);
+            alert("Stravaからのルート一覧取得に失敗しました。再ログインをお試しください。");
+            localStorage.removeItem(constStravaTokenStorageKey);
+            this.ToggleStravaUI(false);
+        }
+    }
+
+    // 選択されたStravaルートのGPXデータを取得して読み込むメソッド
+    async LoadStravaRoute(routeId) {
+        const savedTokenData = localStorage.getItem(constStravaTokenStorageKey);
+        if (!savedTokenData) return;
+        const tokenObj = JSON.parse(savedTokenData);
+
+        try {
+            const response = await fetch(`${constWorkerUrl}/route-gpx/${routeId}?token=${tokenObj.access_token}`);
+            if (!response.ok) throw new Error("GPXデータの取得に失敗しました");
+            const gpxText = await response.text();
+            
+            const routePoints = ParseGpx(gpxText);
+            if (routePoints.length > 0) {
+                this.currentRoutePoints = routePoints;
+                this.hasRouteData = true;
+                this.UpdateDisplay();
+            } else {
+                alert("ルート情報を解析できませんでした。");
+            }
+        } catch (error) {
+            console.error("Strava GPX取得エラー:", error);
+            alert("Stravaからのルート読み込みに失敗しました。");
+        }
     }
 
     // ローカルストレージから設定を読み込むメソッド
@@ -563,6 +690,31 @@ class APP_MANAGER {
                 this.SaveSettings();
                 if (this.hasRouteData) {
                     this.UpdateDisplay();
+                }
+            });
+        }
+
+        // Stravaログインボタンのイベント設定
+        const btnStravaLogin = document.getElementById('btnStravaLogin');
+        if (btnStravaLogin) {
+            btnStravaLogin.addEventListener('click', () => {
+                if (constStravaClientId === 'YOUR_STRAVA_CLIENT_ID' || constWorkerUrl === 'YOUR_WORKER_URL') {
+                    alert("コード内の constStravaClientId と constWorkerUrl を設定してください。");
+                    return;
+                }
+                const scope = 'read,activity:read,read_all';
+                const authUrl = `https://www.strava.com/oauth/authorize?client_id=${constStravaClientId}&response_type=code&redirect_uri=${encodeURIComponent(constAppRedirectUrl)}&approval_prompt=auto&scope=${scope}`;
+                window.location.href = authUrl;
+            });
+        }
+
+        // Stravaルート読み込みボタンのイベント設定
+        const btnLoadStravaRoute = document.getElementById('btnLoadStravaRoute');
+        if (btnLoadStravaRoute) {
+            btnLoadStravaRoute.addEventListener('click', () => {
+                const select = document.getElementById('selectStravaRoute');
+                if (select && select.value) {
+                    this.LoadStravaRoute(select.value);
                 }
             });
         }
